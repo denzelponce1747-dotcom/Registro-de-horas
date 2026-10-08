@@ -168,3 +168,68 @@
     {{ '+' if valor > 0 }}{{ formatear_numero(valor) }} h
   </span>
 {% endmacro %}
+
+
+{# Desglose del saldo de horas acumuladas: de dónde sale el número y cuándo
+   se actualiza. Lo usan «Mis horas» y «Vacaciones y ausencias». #}
+{% macro explicacion_saldo(saldo, config, estado_hoy, abierto=false) %}
+  <details class="tarjeta desglose-saldo" {{ 'open' if abierto }}>
+    <summary class="desglose-saldo-titulo">
+      <span class="fila" style="gap:10px">
+        {{ icono('reloj-arena', '16px', 1.8) }}
+        <span>¿Cómo se calcula mi saldo de horas y cuándo se actualiza?</span>
+      </span>
+      <span class="texto-menudo texto-tenue desglose-saldo-ver">Ver el detalle</span>
+    </summary>
+
+    <div class="desglose-saldo-cuerpo">
+      <dl class="desglose-cuentas tabulares">
+        <div>
+          <dt>Saldo con que empezó su periodo
+            <span class="texto-menudo texto-tenue">(horas acumuladas previas{% if saldo.periodFrom %}, al {{ formatear_fecha(saldo.periodFrom) }}{% endif %})</span></dt>
+          <dd>{{ '+' if saldo.carried > 0 }}{{ formatear_numero(saldo.carried) }} h</dd>
+        </div>
+        <div>
+          <dt>+ Horas trabajadas registradas desde el inicio del periodo
+            {% if saldo.pendingWorked %}<span class="texto-menudo texto-tenue">(incluye {{ formatear_numero(saldo.pendingWorked) }} h por aprobar)</span>{% endif %}</dt>
+          <dd class="positivo">+{{ formatear_numero(saldo.workedTotal) }} h</dd>
+        </div>
+        <div>
+          <dt>− Horas deber de los días laborales transcurridos
+            <span class="texto-menudo texto-tenue">({{ formatear_numero(config.dailyTargetHours) }} h por día{% if estado_hoy == 'pendiente' %}; hoy todavía no cuenta{% elif estado_hoy == 'cuenta' %}; incluye hoy{% endif %})</span></dt>
+          <dd class="negativo">−{{ formatear_numero(saldo.targetTotal) }} h</dd>
+        </div>
+        <div>
+          <dt>− Horas acumuladas usadas en permisos personales aprobados</dt>
+          <dd class="{{ 'negativo' if saldo.spentTotal else 'neutro' }}">{{ '−' if saldo.spentTotal }}{{ formatear_numero(saldo.spentTotal) }} h</dd>
+        </div>
+        <div class="desglose-total">
+          <dt>= Horas acumuladas hoy</dt>
+          <dd>{{ diferencia(saldo.accumulated) }}</dd>
+        </div>
+      </dl>
+
+      <ul class="desglose-reglas">
+        <li><b>Cada actividad que registra suma en el momento</b>, aunque todavía espere la
+          aprobación de la administración. Si la administración rechaza un registro nuevo,
+          esas horas se quitan del saldo.</li>
+        <li><b>Las horas deber de un día laboral ({{ formatear_numero(config.dailyTargetHours) }} h)
+          se descuentan cuando registra la primera actividad de ese día.</b> Si no registra
+          nada, se descuentan al día siguiente. Por eso el saldo no baja en la mañana: refleja
+          lo que ya ha registrado.</li>
+        <li>Los fines de semana, los feriados de ley y los días con una ausencia aprobada
+          (vacaciones, permisos, citas, incapacidades) no generan horas deber.</li>
+        <li>Un permiso personal pagado con horas acumuladas se descuenta <b>el día en que empieza,
+          una vez aprobado</b>.
+          {% if saldo.upcomingSpent %}Tiene {{ formatear_numero(saldo.upcomingSpent) }} h en
+          permisos ya aprobados que se descontarán ese día.{% endif %}
+          {% if saldo.pendingSpent %}Además, {{ formatear_numero(saldo.pendingSpent) }} h pedidas
+          en permisos esperan aprobación y todavía no se descuentan.{% endif %}</li>
+        <li>Solo cuenta lo que cae dentro de su periodo
+          {% if saldo.periodFrom and saldo.periodTo %}({{ formatear_fecha(saldo.periodFrom) }} –
+          {{ formatear_fecha(saldo.periodTo) }}){% endif %}. Si el saldo inicial o el periodo no
+          le parecen correctos, pídale a la administración que los revise en su ficha.</li>
+      </ul>
+    </div>
+  </details>
+{% endmacro %}

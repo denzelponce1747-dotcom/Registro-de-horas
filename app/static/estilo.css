@@ -3309,3 +3309,97 @@ input[type="radio"] {
   color: var(--pendiente-fuerte);
   box-shadow: inset 0 0 0 1px var(--pendiente-borde);
 }
+
+/* ------------------------------------------- Desglose del saldo de horas */
+
+.desglose-saldo {
+  padding: 0;
+}
+
+.desglose-saldo-titulo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  list-style: none;
+  padding: 16px 22px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--tinta);
+}
+
+.desglose-saldo-titulo::-webkit-details-marker {
+  display: none;
+}
+
+.desglose-saldo[open] .desglose-saldo-ver {
+  visibility: hidden;
+}
+
+.desglose-saldo-cuerpo {
+  border-top: 1px solid var(--linea-suave);
+  padding: 18px 22px 22px;
+  display: grid;
+  gap: 18px;
+  animation: surge 360ms var(--curva) both;
+}
+
+.desglose-cuentas {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+
+.desglose-cuentas > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 9px 0;
+  border-bottom: 1px dashed var(--linea);
+  font-size: 13.5px;
+}
+
+.desglose-cuentas dt {
+  color: var(--texto);
+}
+
+.desglose-cuentas dd {
+  margin: 0;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.desglose-cuentas .desglose-total {
+  border-bottom: 0;
+  padding-top: 12px;
+  font-size: 15px;
+}
+
+.desglose-cuentas .desglose-total dt {
+  font-weight: 600;
+  color: var(--tinta);
+}
+
+.desglose-reglas {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--texto-suave);
+}
+
+.desglose-reglas b {
+  color: var(--texto);
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .desglose-cuentas > div {
+    flex-direction: column;
+    gap: 2px;
+  }
+}

@@ -6,7 +6,7 @@ from dataclasses import dataclass, field, replace
 
 from .ajustes import ajustes_de, periodo_del_colaborador, saldo_vacaciones
 from .almuerzo import almuerzo_de
-from .ausencias import totales_ausencias
+from .ausencias import dias_disfrutados, dias_habiles_entre, totales_ausencias
 from .feriados import obtener_feriado
 from .proyectos import buscar_proyecto
 from .tarifas import formatear_montos, resolver_tarifa, sumar_monto
@@ -16,6 +16,7 @@ from .tiempo import (
     horas_brutas_entre,
     hoy_iso,
     redondear,
+    sumar_dias,
 )
 from .usuarios import colaboradores_de, nombre_de_usuario
 
@@ -211,17 +212,23 @@ def horas_deber_de(registros: list, horas_deber_diarias: float) -> float:
 
 
 def dias_laborales_del_periodo(desde: str, hasta: str, ausencias: list | None = None,
-                               usuario_id: str = "", hoy: str | None = None) -> list:
+                               usuario_id: str = "", hoy: str | None = None,
+                               hoy_cuenta: bool = True) -> list:
     """Días del periodo que sí exigen trabajo.
 
     Quedan fuera los fines de semana, los feriados de Costa Rica y los días
     cubiertos por una ausencia aprobada. El periodo se recorta a hoy: lo que
     todavía no se ha trabajado no puede deberse.
+
+    `hoy_cuenta` en falso deja fuera el día de hoy: es lo que pasa mientras
+    la persona no ha registrado nada en la jornada (ver `saldo_horas`).
     """
     hoy = hoy or hoy_iso()
     if not desde:
         return []
     fin = min(hasta, hoy) if hasta else hoy
+    if not hoy_cuenta and fin >= hoy:
+        fin = sumar_dias(hoy, -1)
     if fin < desde:
         return []
 
@@ -243,7 +250,7 @@ def dias_laborales_del_periodo(desde: str, hasta: str, ausencias: list | None = 
 
 def horas_deber_del_periodo(desde: str, hasta: str, horas_deber_diarias: float,
                             ausencias: list | None = None, usuario_id: str = "",
-                            hoy: str | None = None) -> float:
+                            hoy: str | None = None, hoy_cuenta: bool = True) -> float:
     """Horas que la persona debía haber trabajado en su periodo.
 
     Cuenta **todos** los días laborales transcurridos, se haya registrado algo
@@ -251,7 +258,7 @@ def horas_deber_del_periodo(desde: str, hasta: str, horas_deber_diarias: float,
     lleva medio año sin anotar arrastra un saldo negativo grande, en vez del
     cero que salía cuando solo contaban los días con registro.
     """
-    dias = dias_laborales_del_periodo(desde, hasta, ausencias, usuario_id, hoy)
+    dias = dias_laborales_del_periodo(desde, hasta, ausencias, usuario_id, hoy, hoy_cuenta)
     return redondear(len(dias) * horas_deber_diarias)
 
 
@@ -268,6 +275,24 @@ class SaldoHoras:
     # Saldo real al final del tramo: saldo previo + todo lo trabajado desde
     # el inicio del periodo - todo lo debido - todo lo gastado.
     accumulated: float
+    # Desglose del acumulado, para explicarlo en pantalla: saldo con que
+    # empezó el periodo y lo trabajado, debido y gastado desde su inicio.
+    carried: float = 0.0
+    workedTotal: float = 0.0
+    targetTotal: float = 0.0
+    spentTotal: float = 0.0
+    # Horas de registros todavía pendientes de aprobación (ya cuentan).
+    pendingWorked: float = 0.0
+    # Si la jornada de hoy ya cuenta en el saldo (ver `saldo_horas`).
+    todayCounts: bool = True
+    # Horas de permisos aprobados que empiezan después de hoy: se
+    # descontarán ese día.
+    upcomingSpent: float = 0.0
+    # Horas pedidas en permisos que esperan aprobación.
+    pendingSpent: float = 0.0
+    # Periodo sobre el que corre el saldo.
+    periodFrom: str = ""
+    periodTo: str = ""
 
 
 def gastadas_entre(ausencias: list, usuario_id: str, desde: str, hasta: str) -> float:
@@ -294,6 +319,13 @@ def saldo_horas(registros: list, ausencias: list, config, usuario_id: str, *,
     `desde` y `hasta` recortan el tramo que se informa (un reporte de una
     quincena), pero el acumulado siempre corre desde el inicio del periodo:
     es el saldo real al final de ese tramo.
+
+    **Cuándo cuenta el día de hoy.** Cada registro cuenta en el momento en
+    que se guarda (aunque espere aprobación). Las horas deber de hoy, en
+    cambio, entran en el saldo cuando la persona registra la primera
+    actividad de la jornada; si no registra nada, entran al día siguiente.
+    Antes contaban desde que empezaba el día y el saldo amanecía 8,5 h más
+    bajo, lo que hacía difícil saber cuándo se reflejaba lo trabajado.
     """
     hoy = hoy or hoy_iso()
     periodo = periodo_del_colaborador(config)
@@ -303,6 +335,7 @@ def saldo_horas(registros: list, ausencias: list, config, usuario_id: str, *,
     tramo_hasta = min(hasta or fin, fin)
 
     propios = [r for r in registros if r.userId == usuario_id]
+    hoy_cuenta = any(r.date == hoy for r in propios)
 
     def trabajadas_entre(a: str, b: str) -> float:
         return redondear(sum(r.hours for r in propios if a <= r.date <= b)) if a <= b else 0.0
@@ -310,25 +343,47 @@ def saldo_horas(registros: list, ausencias: list, config, usuario_id: str, *,
     def deber_entre(a: str, b: str) -> float:
         if a > b:
             return 0.0
-        return horas_deber_del_periodo(a, b, config.dailyTargetHours, ausencias, usuario_id, hoy)
+        return horas_deber_del_periodo(a, b, config.dailyTargetHours, ausencias, usuario_id,
+                                       hoy, hoy_cuenta)
 
     trabajadas = trabajadas_entre(tramo_desde, tramo_hasta)
     deber = deber_entre(tramo_desde, tramo_hasta)
     gastadas = (gastadas_entre(ausencias, usuario_id, tramo_desde, tramo_hasta)
                 if tramo_desde <= tramo_hasta else 0.0)
 
+    trabajadas_total = trabajadas_entre(inicio, tramo_hasta)
+    deber_total = deber_entre(inicio, tramo_hasta)
+    gastadas_total = (gastadas_entre(ausencias, usuario_id, inicio, tramo_hasta)
+                      if inicio <= tramo_hasta else 0.0)
     acumulado = redondear(
-        config.carriedBalanceHours
-        + trabajadas_entre(inicio, tramo_hasta)
-        - deber_entre(inicio, tramo_hasta)
-        - (gastadas_entre(ausencias, usuario_id, inicio, tramo_hasta) if inicio <= tramo_hasta else 0)
+        config.carriedBalanceHours + trabajadas_total - deber_total - gastadas_total
     )
+
+    fin_periodo = periodo.lastWorkday or "9999-12-31"
+    propias = [a for a in ausencias if a.userId == usuario_id and a.kind != "vacaciones"]
     return SaldoHoras(
         worked=trabajadas,
         target=deber,
         difference=redondear(trabajadas - deber),
         spent=gastadas,
         accumulated=acumulado,
+        carried=config.carriedBalanceHours,
+        workedTotal=trabajadas_total,
+        targetTotal=deber_total,
+        spentTotal=redondear(gastadas_total),
+        pendingWorked=redondear(sum(
+            r.hours for r in propios if r.status == "pendiente" and inicio <= r.date <= tramo_hasta
+        )),
+        todayCounts=hoy_cuenta,
+        upcomingSpent=redondear(sum(
+            a.accumulatedHours for a in propias
+            if a.status == "aprobada" and hoy < a.from_date <= fin_periodo
+        )),
+        pendingSpent=redondear(sum(
+            a.accumulatedHours for a in propias if a.status == "pendiente"
+        )),
+        periodFrom=periodo.firstWorkday,
+        periodTo=periodo.lastWorkday,
     )
 
 
@@ -345,6 +400,48 @@ def vacaciones_de(config, ausencias: list, usuario_id: str, hoy: str | None = No
         config, totales.vacationTaken, totales.vacationScheduled, totales.vacationPending
     )
     return saldo, totales
+
+
+def detalle_vacaciones(config, ausencias: list, usuario_id: str,
+                       hoy: str | None = None) -> list:
+    """Cada solicitud de vacaciones con lo que aporta al saldo.
+
+    Sirve para que la persona vea de dónde sale «Disponibles»: qué días ya
+    se descontaron, cuáles están por disfrutar, cuáles esperan aprobación y
+    cuáles quedaron en un año ya cerrado (antes del último traslado).
+    """
+    hoy = hoy or hoy_iso()
+    desde = getattr(config, "vacationSince", "") or ""
+    salida = []
+    for ausencia in ausencias:
+        if ausencia.userId != usuario_id or ausencia.kind != "vacaciones":
+            continue
+        if ausencia.status == "rechazada":
+            estado, cuenta = "rechazada", 0.0
+        elif desde and ausencia.from_date < desde:
+            estado, cuenta = "cerrada", 0.0
+        elif ausencia.status == "pendiente":
+            estado, cuenta = "pendiente", 0.0
+        else:
+            disfrutados = dias_disfrutados(ausencia, hoy)
+            if disfrutados >= ausencia.days:
+                estado = "disfrutada"
+            elif disfrutados > 0:
+                estado = "en-curso"
+            else:
+                estado = "por-disfrutar"
+            cuenta = float(ausencia.days)
+        habiles = dias_habiles_entre(ausencia.from_date, ausencia.to_date)
+        salida.append({
+            "ausencia": ausencia,
+            "estado": estado,
+            "descuenta": redondear(cuenta),
+            "habiles": habiles,
+            # Pidió menos días que los hábiles del rango (más de medio día de
+            # diferencia en cada punta): vale la pena revisarlo.
+            "faltan": redondear(habiles - ausencia.days) if habiles - ausencia.days > 1 else 0,
+        })
+    return sorted(salida, key=lambda item: item["ausencia"].from_date, reverse=True)
 
 
 @dataclass

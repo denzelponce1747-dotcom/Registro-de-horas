@@ -70,6 +70,21 @@ def dias_habiles_entre(desde: str, hasta: str) -> int:
     )
 
 
+def dias_disfrutados(ausencia, hoy: str) -> float:
+    """Días de unas vacaciones aprobadas que ya pasaron (hoy incluido).
+
+    Unas vacaciones en curso se reparten: los días hábiles transcurridos
+    cuentan como disfrutados y el resto como «por disfrutar». Antes contaban
+    enteras como disfrutadas desde el primer día.
+    """
+    if ausencia.from_date > hoy:
+        return 0.0
+    if ausencia.to_date <= hoy:
+        return float(ausencia.days)
+    transcurridos = dias_habiles_entre(ausencia.from_date, hoy)
+    return float(min(ausencia.days, transcurridos))
+
+
 @dataclass
 class TotalesAusencias:
     # Vacaciones aprobadas que ya empezaron.
@@ -116,10 +131,9 @@ def totales_ausencias(ausencias: list, hoy: str | None = None,
             continue
 
         if es_vacacion:
-            if ausencia.from_date <= hoy:
-                totales.vacationTaken += ausencia.days
-            else:
-                totales.vacationScheduled += ausencia.days
+            disfrutados = dias_disfrutados(ausencia, hoy)
+            totales.vacationTaken += disfrutados
+            totales.vacationScheduled += ausencia.days - disfrutados
         elif en_periodo:
             totales.otherAbsenceDays += ausencia.days
             totales.accumulatedHoursUsed += ausencia.accumulatedHours

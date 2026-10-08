@@ -1,5 +1,5 @@
 {% extends "armazon.html" %}
-{% from "piezas.html" import encabezado, indicador, insignia_estado, insignia_tipo, vacio %}
+{% from "piezas.html" import encabezado, explicacion_saldo, indicador, insignia_estado, insignia_tipo, vacio %}
 {% block titulo %}Mis horas · MAJERIE S.R.L{% endblock %}
 
 {% block pantalla %}
@@ -15,7 +15,11 @@
                    formatear_horas(resumen.totalHours) ~ ' registradas en total') }}
       {{ indicador('reloj-arena', 'Horas acumuladas',
                    ('+' if acumuladas > 0 else '') ~ formatear_horas(acumuladas),
-                   'Frente a ' ~ formatear_horas(deber) ~ ' de horas deber', 'acento') }}
+                   ('Al cierre de ayer · hoy cuenta al registrar' if estado_hoy == 'pendiente'
+                    else ('Incluye lo registrado hoy' if estado_hoy == 'cuenta'
+                          else 'Actualizado al día de hoy'))
+                   ~ ' · ' ~ formatear_horas(saldo.workedTotal) ~ ' trabajadas de '
+                   ~ formatear_horas(saldo.targetTotal) ~ ' deber', 'acento') }}
       {{ indicador('palmera', 'Vacaciones disponibles',
                    formatear_numero(vacaciones.available, 1) ~ ' días',
                    vacaciones.annual|int ~ ' de base anual + '
@@ -24,6 +28,10 @@
                    (resumen.pendingEntries ~ ' de horas · ' ~ totales.pendingRequests ~ ' de ausencias')
                    if pendientes else 'Todo al día',
                    'pendiente' if pendientes else '') }}
+    </div>
+
+    <div class="surge" style="animation-delay:110ms">
+      {{ explicacion_saldo(saldo, config, estado_hoy) }}
     </div>
 
     <div class="surge" style="animation-delay:140ms">
@@ -99,10 +107,11 @@
         <div>
           <p class="indicador-titulo">Horas deber</p>
           <p class="texto-fuerte tabulares" style="font-size:20px;margin-top:4px">
-            {{ formatear_numero(deber_dia) }} h
+            {{ formatear_numero(config.dailyTargetHours if hoy_abierto else deber_dia) }} h
           </p>
           <p class="texto-menudo texto-apagado">
-            {% if feriado %}{{ feriado }}
+            {% if hoy_abierto %}Cuentan al registrar la primera actividad
+            {% elif feriado %}{{ feriado }}
             {% elif es_finde %}Fin de semana
             {% elif ausencias_dia %}Ausencia aprobada
             {% elif dia_futuro %}Día por venir
@@ -157,6 +166,13 @@
             <span class="insignia insignia--neutra">Fuera de su periodo</span>
           {% endif %}
           Este día no genera horas deber.
+        </p>
+      {% elif hoy_abierto %}
+        <p class="linea-superior texto-pequeno texto-tenue">
+          <span class="insignia insignia--neutra">Hoy</span>
+          Las {{ formatear_numero(config.dailyTargetHours) }} h deber de hoy entran en su saldo
+          cuando registre la primera actividad del día (si no registra nada, se descuentan
+          mañana). Lo que registre suma en el momento.
         </p>
       {% elif not registros_dia and not dia_futuro and deber_dia %}
         <p class="linea-superior texto-pequeno texto-tenue">
@@ -332,7 +348,8 @@
         <p>
           {{ formatear_numero(horas_semana) }} h trabajadas ·
           {{ formatear_numero(deber_semana) }} h deber ·
-          diferencia {{ '+' if diferencia_semana > 0 }}{{ formatear_numero(diferencia_semana) }} h
+          diferencia {{ '+' if diferencia_semana > 0 }}{{ formatear_numero(diferencia_semana) }} h ·
+          saldo al empezar la semana {{ '+' if saldo_inicio_semana > 0 }}{{ formatear_numero(saldo_inicio_semana) }} h
         </p>
       </div>
       <div class="tarjeta-encabezado-acciones">
@@ -399,10 +416,18 @@
               </span>
               <span class="texto-tenue">Almuerzo {{ formatear_almuerzo_corto(fila.lunchMinutes) }}</span>
               <b>{{ formatear_numero(fila.hours) }} h</b>
-              <span class="texto-tenue">deber {{ formatear_numero(fila.targetHours) }} h</span>
+              {% if fila.todayOpen %}
+                <span class="texto-tenue" title="Las horas deber de hoy cuentan cuando registre la primera actividad">deber {{ formatear_numero(fila.dayTarget) }} h al registrar</span>
+              {% else %}
+                <span class="texto-tenue">deber {{ formatear_numero(fila.targetHours) }} h</span>
+              {% endif %}
               <span class="{{ 'positivo' if fila.difference > 0 else ('negativo' if fila.difference < 0 else 'neutro') }}">
                 {{ '+' if fila.difference > 0 }}{{ formatear_numero(fila.difference) }} h
               </span>
+              {% if not por_venir %}
+                <span class="texto-tenue" title="Horas acumuladas al cierre del día">saldo
+                  <b class="{{ 'positivo' if fila.cumulative > 0 else ('negativo' if fila.cumulative < 0 else 'neutro') }}">{{ '+' if fila.cumulative > 0 }}{{ formatear_numero(fila.cumulative) }} h</b></span>
+              {% endif %}
             </div>
           </div>
         </li>

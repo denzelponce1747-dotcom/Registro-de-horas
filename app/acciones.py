@@ -1031,6 +1031,14 @@ def trasladar_vacaciones(usuario, usuario_id: str, corte: str | None = None) -> 
     corte = corte or hoy_iso()
     if not parsear_iso(corte):
         return mal("Indique una fecha de corte válida.")
+    # Un corte futuro dejaba sin descontar las vacaciones que se aprobaran
+    # entre hoy y esa fecha: ya no contaban en el año que se cerraba ni en
+    # el nuevo. El año se cierra el día del corte o después.
+    if corte > hoy_iso():
+        return mal(
+            f"La fecha de corte ({formatear_fecha(corte)}) todavía no llega. Haga el traslado "
+            "ese día o después: así se descuentan todas las vacaciones del año que se cierra."
+        )
     desde_anterior = ficha["vacation_since"] or ""
     if desde_anterior and corte <= desde_anterior:
         return mal(f"Ya se hizo un traslado con corte el {formatear_fecha(desde_anterior)}.")

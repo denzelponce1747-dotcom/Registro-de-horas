@@ -47,6 +47,11 @@ class FilaDiaria:
     pending: int = 0
     # Horas acumuladas pagadas con un permiso que empieza ese día.
     spentHours: float = 0.0
+    # Hoy, todavía sin registros: sus horas deber entran en el saldo con la
+    # primera actividad del día (o mañana, si no se registra nada).
+    todayOpen: bool = False
+    # Horas deber que tendría el día (aunque todavía no cuenten).
+    dayTarget: float = 0.0
 
 
 def linea_de_registro(registro, proyectos: list) -> str:
@@ -77,9 +82,11 @@ def construir_filas_diarias(
     laboral y arrastra las horas acumuladas.
 
     Los días fuera del periodo de la persona (`periodo_desde`…`periodo_hasta`)
-    no generan horas deber, igual que en el saldo del dashboard. Las horas
-    acumuladas que se pagan con un permiso se descuentan el día en que el
-    permiso empieza: así el último acumulado coincide con el del dashboard.
+    no generan horas deber ni mueven el acumulado, igual que en el saldo del
+    dashboard. Las horas acumuladas que se pagan con un permiso se descuentan
+    el día en que el permiso empieza: así el último acumulado coincide con el
+    del dashboard. Hoy, mientras no haya registros, tampoco se debe nada
+    todavía (ver `saldo_horas`).
     """
     ausencias = ausencias or []
     hoy = hoy or hoy_iso()
@@ -119,14 +126,18 @@ def construir_filas_diarias(
             (periodo_desde and fecha < periodo_desde)
             or (periodo_hasta and fecha > periodo_hasta)
         )
-        deber = (
+        deber_del_dia = (
             0.0
             if finde or feriado or ausencias_dia or fecha > hoy or fuera_del_periodo
             else horas_deber
         )
+        # Hoy sin registros: el día todavía no cuenta en el saldo.
+        hoy_abierto = fecha == hoy and not del_dia and deber_del_dia > 0
+        deber = 0.0 if hoy_abierto else deber_del_dia
         diferencia = redondear(trabajadas - deber)
         gastadas = 0.0 if fuera_del_periodo else redondear(gastadas_por_dia.get(fecha, 0.0))
-        acumulado = redondear(acumulado + diferencia - gastadas)
+        if not fuera_del_periodo:
+            acumulado = redondear(acumulado + diferencia - gastadas)
 
         filas.append(
             FilaDiaria(
@@ -149,6 +160,8 @@ def construir_filas_diarias(
                 entries=del_dia,
                 pending=sum(1 for r in del_dia if r.status == "pendiente"),
                 spentHours=gastadas,
+                todayOpen=hoy_abierto,
+                dayTarget=deber_del_dia,
             )
         )
 

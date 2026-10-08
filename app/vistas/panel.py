@@ -373,11 +373,10 @@ def aprobaciones():
 def _corte_sugerido() -> str:
     """Fecha de corte que se propone para trasladar las vacaciones.
 
-    De octubre en adelante se piensa en el año que viene; antes, en el que
-    empezó.
+    Es el 1 de enero del año en curso: el traslado se hace cuando el año ya
+    cerró, nunca con una fecha futura (ver `acciones.trasladar_vacaciones`).
     """
-    hoy = date.today()
-    return f"{hoy.year + 1}-01-01" if hoy.month >= 10 else f"{hoy.year}-01-01"
+    return f"{date.today().year}-01-01"
 
 
 @panel.route("/configuracion", methods=["GET", "POST"])

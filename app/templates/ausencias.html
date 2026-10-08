@@ -1,5 +1,5 @@
 {% extends "armazon.html" %}
-{% from "piezas.html" import encabezado, indicador, insignia_ausencia, insignia_tipo, vacio %}
+{% from "piezas.html" import encabezado, explicacion_saldo, indicador, insignia_ausencia, insignia_tipo, vacio %}
 {% block titulo %}Vacaciones y ausencias · MAJERIE S.R.L{% endblock %}
 
 {% block pantalla %}
@@ -20,7 +20,8 @@
                    formatear_numero(vacaciones.taken, 1) ~ ' días ya disfrutados') }}
       {{ indicador('reloj-arena', 'Horas acumuladas',
                    ('+' if acumuladas > 0 else '') ~ formatear_horas(acumuladas),
-                   'Usables en permisos personales remunerados') }}
+                   'Usables en permisos personales remunerados'
+                   ~ ((' · ' ~ formatear_horas(saldo.pendingSpent) ~ ' pedidas en espera') if saldo.pendingSpent else '')) }}
       {{ indicador('escudo-alerta', 'Solicitudes pendientes', totales.pendingRequests,
                    (formatear_numero(vacaciones.pending, 1) ~ ' días de vacaciones en espera')
                    if vacaciones.pending else 'Sin solicitudes en espera',
@@ -33,7 +34,9 @@
           <div>
             <h2>Saldo de vacaciones {{ anio }}</h2>
             <p>Base anual más los días acumulados del año anterior, menos los días
-               ya aprobados.</p>
+               ya aprobados (disfrutados o por disfrutar).
+               {% if config.vacationSince %}Cuentan las vacaciones desde el
+               {{ formatear_fecha(config.vacationSince) }}, fecha del último cierre de año.{% endif %}</p>
           </div>
         </div>
         <div class="tarjeta-cuerpo">
@@ -52,8 +55,51 @@
               </div>
             {% endfor %}
           </dl>
+
+          <p class="texto-menudo texto-tenue" style="margin-top:16px">
+            Cuenta: {{ formatear_numero(vacaciones.annual, 1) }} de base anual
+            + {{ formatear_numero(vacaciones.carried, 1) }} acumulados
+            − {{ formatear_numero(vacaciones.taken + vacaciones.scheduled, 1) }} aprobados
+            = <b>{{ formatear_numero(vacaciones.available, 1) }} días disponibles</b>.
+            {% if not vacaciones.carried %}Si le quedaron días sin disfrutar de años anteriores y aquí
+            aparece 0, pídale a la administración que los anote en su ficha («Vacaciones del año
+            anterior»).{% endif %}
+          </p>
+
+          {% if detalle_vacaciones %}
+            <details class="detalle-plegable" style="margin-top:14px">
+              <summary>Ver qué vacaciones se descuentan del saldo</summary>
+              <div>
+                <ul class="lista-dividida">
+                  {% for item in detalle_vacaciones %}
+                    {% set a = item.ausencia %}
+                    <li class="fila fila--separada texto-pequeno" style="padding:8px 0;gap:12px">
+                      <span class="tabulares">
+                        {{ formatear_rango(a.from_date, a.to_date) }} ·
+                        {{ formatear_numero(a.days, 1) }} {{ 'día' if a.days == 1 else 'días' }}
+                        {% if item.faltan %}
+                          <span class="insignia insignia--pendiente" style="margin-left:6px"
+                                title="El rango tiene {{ item.habiles }} días hábiles">rango de {{ item.habiles }} días hábiles</span>
+                        {% endif %}
+                      </span>
+                      <span class="texto-tenue" style="text-align:right">
+                        {% if item.estado == 'disfrutada' %}Disfrutadas · se descuentan {{ formatear_numero(item.descuenta, 1) }}
+                        {% elif item.estado == 'en-curso' %}En curso · se descuentan {{ formatear_numero(item.descuenta, 1) }}
+                        {% elif item.estado == 'por-disfrutar' %}Aprobadas, por disfrutar · se descuentan {{ formatear_numero(item.descuenta, 1) }}
+                        {% elif item.estado == 'pendiente' %}En espera de aprobación · todavía no se descuentan
+                        {% elif item.estado == 'cerrada' %}De un año ya cerrado · incluidas en «acumulado del año anterior»
+                        {% else %}Rechazadas · no se descuentan{% endif %}
+                      </span>
+                    </li>
+                  {% endfor %}
+                </ul>
+              </div>
+            </details>
+          {% endif %}
         </div>
       </section>
+
+      {{ explicacion_saldo(saldo, config, estado_hoy) }}
 
       <section class="tarjeta tarjeta--recorta">
         <div class="tarjeta-encabezado">
@@ -150,6 +196,10 @@
                       {{ formatear_rango(ausencia.from_date, ausencia.to_date) }} ·
                       {{ formatear_numero(ausencia.days, 1) }}
                       {{ 'día' if ausencia.days == 1 else 'días' }}
+                      {% set habiles_rango = dias_habiles(ausencia.from_date, ausencia.to_date) %}
+                      {% if ausencia.kind == 'vacaciones' and habiles_rango - ausencia.days > 1 %}
+                        (el rango tiene {{ habiles_rango }} días hábiles)
+                      {% endif %}
                       {% if ausencia.accumulatedHours %}
                         · {{ formatear_horas(ausencia.accumulatedHours) }} de horas acumuladas
                       {% endif %}
@@ -245,11 +295,17 @@
       };
 
       dias.addEventListener("input", () => { dias.dataset.tocado = "1"; });
-      [tipo, desde, hasta].forEach((campo) => campo.addEventListener("change", refrescar));
-      desde.addEventListener("change", () => {
+      tipo.addEventListener("change", refrescar);
+      // Al cambiar las fechas se vuelven a proponer los días hábiles del
+      // rango, aunque antes se haya escrito un número a mano: si no, la
+      // solicitud quedaba con menos días que el rango elegido.
+      const nuevasFechas = () => {
         if (hasta.value < desde.value) hasta.value = desde.value;
+        delete dias.dataset.tocado;
         refrescar();
-      });
+      };
+      desde.addEventListener("change", nuevasFechas);
+      hasta.addEventListener("change", nuevasFechas);
       refrescar();
     })();
   </script>

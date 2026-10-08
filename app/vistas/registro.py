@@ -20,6 +20,8 @@ from ..lib.ausencias import (
 from ..lib.diario import construir_filas_diarias
 from ..lib.estadisticas import (
     con_horas,
+    detalle_vacaciones,
+    horas_deber_del_periodo,
     horas_netas_del_dia,
     ordenar_por_fecha_desc,
     resumir,
@@ -41,6 +43,7 @@ from ..lib.tiempo import (
     hoy_iso,
     inicio_de_semana,
     redondear,
+    sumar_dias,
 )
 from .comun import avisar, contexto_base, numero_o_none
 
@@ -59,6 +62,23 @@ def _mis_datos():
     config = ajustes_de(instantanea.collaboratorSettings, usuario.id)
 
     return usuario, instantanea, mis_registros, mis_ausencias, config
+
+
+def _estado_de_hoy(saldo, config, ausencias, usuario_id) -> str:
+    """Cómo entra hoy en el saldo de horas.
+
+    - «cuenta»: día laboral con algo registrado; sus horas deber ya cuentan.
+    - «pendiente»: día laboral todavía sin registros; cuenta al registrar.
+    - «libre»: fin de semana, feriado, ausencia aprobada o fuera del periodo.
+    """
+    hoy = hoy_iso()
+    deber = horas_deber_del_periodo(
+        max(hoy, config.periodFrom or hoy), min(hoy, config.periodTo or hoy),
+        config.dailyTargetHours, ausencias, usuario_id, hoy,
+    )
+    if not deber:
+        return "libre"
+    return "cuenta" if saldo.todayCounts else "pendiente"
 
 
 # ---------------------------------------------------------------------------
@@ -82,6 +102,7 @@ def registro_horas():
     resumen = resumir(mis_registros)
     saldo = saldo_horas(mis_registros, mis_ausencias, config, usuario.id)
     vacaciones, totales = vacaciones_de(config, mis_ausencias, usuario.id)
+    estado_hoy = _estado_de_hoy(saldo, config, mis_ausencias, usuario.id)
 
     mis_proyectos = proyectos_visibles(instantanea.projects, usuario)
     editando = request.args.get("editar", "")
@@ -97,6 +118,7 @@ def registro_horas():
         saldo=saldo,
         deber=saldo.target,
         acumuladas=saldo.accumulated,
+        estado_hoy=estado_hoy,
         vacaciones=vacaciones,
         totales=totales,
         pendientes=resumen.pendingEntries + totales.pendingRequests,
@@ -136,7 +158,9 @@ def _contexto_dia(usuario, instantanea, registros, ausencias, config, fecha):
     en_periodo = (config.periodFrom or fecha) <= fecha <= (config.periodTo or fecha)
     futuro = fecha > hoy_iso()
     con_deber = not finde and not feriado and not ausencias_dia and en_periodo and not futuro
-    deber_dia = config.dailyTargetHours if con_deber else 0
+    # Hoy, sin nada registrado, el día todavía no cuenta en el saldo.
+    hoy_abierto = con_deber and fecha == hoy_iso() and not del_dia
+    deber_dia = config.dailyTargetHours if con_deber and not hoy_abierto else 0
 
     return {
         "registros_dia": del_dia,
@@ -147,6 +171,7 @@ def _contexto_dia(usuario, instantanea, registros, ausencias, config, fecha):
         "es_finde": finde,
         "ausencias_dia": ausencias_dia,
         "deber_dia": deber_dia,
+        "hoy_abierto": hoy_abierto,
         "dia_futuro": futuro,
         "fuera_del_periodo": not en_periodo,
         "diferencia_dia": redondear(horas_netas - deber_dia),
@@ -158,13 +183,20 @@ def _contexto_dia(usuario, instantanea, registros, ausencias, config, fecha):
 def _contexto_semana(usuario, instantanea, registros, ausencias, config, fecha):
     desde = inicio_de_semana(fecha)
     hasta = fin_de_semana_iso(fecha)
+    # La columna «Saldo» arranca con el saldo real al cierre del domingo
+    # anterior: así el último día coincide con «Horas acumuladas». Antes
+    # arrancaba en cero cada semana.
+    #
+    saldo_previo = saldo_horas(
+        registros, ausencias, config, usuario.id, hasta=sumar_dias(desde, -1)
+    ).accumulated if (config.periodFrom or "") < desde else config.carriedBalanceHours
 
     filas = construir_filas_diarias(
         [r for r in registros if desde <= r.date <= hasta],
         desde=desde,
         hasta=hasta,
         horas_deber=config.dailyTargetHours,
-        saldo_previo=0,
+        saldo_previo=saldo_previo,
         proyectos=instantanea.projects,
         almuerzos=instantanea.lunches,
         usuario_id=usuario.id,
@@ -176,6 +208,7 @@ def _contexto_semana(usuario, instantanea, registros, ausencias, config, fecha):
     return {
         "semana_desde": desde,
         "semana_hasta": hasta,
+        "saldo_inicio_semana": saldo_previo,
         "filas_semana": filas,
         "codigos_proyecto": {p.id: p.code for p in instantanea.projects},
         "horas_semana": redondear(sum(fila.hours for fila in filas)),
@@ -316,7 +349,8 @@ def ausencias():
     _, instantanea, mis_registros, mis_ausencias, config = _mis_datos()
 
     vacaciones, totales = vacaciones_de(config, mis_ausencias, usuario.id)
-    acumuladas = saldo_horas(mis_registros, mis_ausencias, config, usuario.id).accumulated
+    saldo = saldo_horas(mis_registros, mis_ausencias, config, usuario.id)
+    acumuladas = saldo.accumulated
 
     hoy = hoy_iso()
     anio = anio_de(hoy)
@@ -331,7 +365,12 @@ def ausencias():
         puede_retirar=lambda a: a.status == "pendiente" or a.from_date > hoy,
         totales=totales,
         vacaciones=vacaciones,
+        detalle_vacaciones=detalle_vacaciones(config, mis_ausencias, usuario.id),
+        saldo=saldo,
+        config=config,
+        estado_hoy=_estado_de_hoy(saldo, config, mis_ausencias, usuario.id),
         acumuladas=acumuladas,
+        dias_habiles=dias_habiles_entre,
         anio=anio,
         hoy=hoy,
         dias_sugeridos=dias_habiles_entre(hoy, hoy),

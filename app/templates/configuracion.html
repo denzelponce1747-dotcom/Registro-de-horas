@@ -225,12 +225,15 @@
             <input class="control control--compacto control-numero" type="number" step="0.25"
                    id="saldo-{{ persona.id }}" name="carriedBalanceHours"
                    value="{{ valor_entrada(ficha.config.carriedBalanceHours) }}" />
+            <p class="campo-pista">Saldo con que la persona empieza su periodo (puede ser negativo).</p>
           </div>
           <div class="campo">
             <label for="vacprev-{{ persona.id }}">Vacaciones del año anterior (días)</label>
             <input class="control control--compacto control-numero" type="number" step="0.5"
                    id="vacprev-{{ persona.id }}" name="carriedVacationDays"
                    value="{{ valor_entrada(ficha.config.carriedVacationDays) }}" />
+            <p class="campo-pista">Días que la persona traía sin disfrutar de años anteriores.
+              Se suman a la base anual.</p>
           </div>
           <div class="campo">
             <label for="vacbase-{{ persona.id }}">Base anual (días)</label>
@@ -283,20 +286,35 @@
           {% endif %}
         </p>
 
-        <form method="post" class="fila" style="gap:8px">
-          <input type="hidden" name="accion" value="trasladar-vacaciones" />
-          <input type="hidden" name="id" value="{{ persona.id }}" />
-          <input type="hidden" name="vista" value="equipo" />
-          <label class="texto-menudo texto-tenue" for="corte-{{ persona.id }}">Corte</label>
-          <input class="control control--compacto" type="date" id="corte-{{ persona.id }}" name="corte"
-                 value="{{ corte_sugerido }}" style="width:10.5rem"
-                 {% if ficha.config.vacationSince %}min="{{ sumar_dias(ficha.config.vacationSince, 1) }}"{% endif %} />
-          <button class="boton boton--secundario boton--sm" type="submit"
-                  data-confirmar="¿Cerrar el año de vacaciones de {{ persona.name }}? Los días que le queden pasan a «vacaciones del año anterior» y, desde la fecha de corte, solo cuentan las vacaciones nuevas.">
-            Trasladar saldo al año siguiente
-          </button>
-        </form>
+        {% if ficha.config.vacationSince and ficha.config.vacationSince >= corte_sugerido %}
+          <p class="texto-menudo texto-apagado">
+            El año de vacaciones ya se cerró. El próximo traslado se hace a partir del
+            1 de enero de {{ anio + 1 }}.
+          </p>
+        {% else %}
+          <form method="post" class="fila" style="gap:8px">
+            <input type="hidden" name="accion" value="trasladar-vacaciones" />
+            <input type="hidden" name="id" value="{{ persona.id }}" />
+            <input type="hidden" name="vista" value="equipo" />
+            <label class="texto-menudo texto-tenue" for="corte-{{ persona.id }}">Corte</label>
+            <input class="control control--compacto" type="date" id="corte-{{ persona.id }}" name="corte"
+                   value="{{ corte_sugerido }}" style="width:10.5rem" max="{{ hoy_iso() }}"
+                   {% if ficha.config.vacationSince %}min="{{ sumar_dias(ficha.config.vacationSince, 1) }}"{% endif %} />
+            <button class="boton boton--secundario boton--sm" type="submit"
+                    data-confirmar="¿Cerrar el año de vacaciones de {{ persona.name }}? Los días que le queden pasan a «vacaciones del año anterior» y, desde la fecha de corte, solo cuentan las vacaciones nuevas.">
+              Trasladar saldo al año siguiente
+            </button>
+          </form>
+        {% endif %}
       </div>
+      {% if ficha.config.vacationSince and ficha.config.vacationSince > hoy_iso() %}
+        <p class="linea-superior texto-menudo" style="color:var(--peligro)">
+          Atención: el último traslado de {{ persona.name }} se hizo con una fecha de corte futura
+          ({{ formatear_fecha(ficha.config.vacationSince) }}). Las vacaciones que empiezan antes de esa
+          fecha no se descuentan del saldo. Revise «Vacaciones del año anterior» y corríjalo a mano si
+          hace falta.
+        </p>
+      {% endif %}
 
       <form method="post" class="linea-superior fila" style="gap:8px">
         <input type="hidden" name="accion" value="restablecer-contrasena" />
