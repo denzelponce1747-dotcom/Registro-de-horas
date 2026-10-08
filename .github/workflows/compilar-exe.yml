@@ -1,0 +1,108 @@
+name: Compilar el ejecutable de Windows
+
+# Cada cambio subido compila el .exe en una computadora con Windows, después
+# de pasar las pruebas, y lo abre para comprobar que arranca. El resultado
+# (carpeta con el .exe, el Manual de Usuario y el LÉAME) queda:
+#   - como artefacto de la ejecución (pestaña Actions), y
+#   - como versión publicada (pestaña Releases), lista para descargar.
+
+on:
+  push:
+    branches: ["**"]
+    paths-ignore: ["**.md"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: compilar-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compilar:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    env:
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: requirements-empaque.txt
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-empaque.txt
+
+      - name: Pruebas
+        run: python -m unittest discover -s pruebas -t . -v
+
+      - name: Versión
+        id: version
+        shell: pwsh
+        run: |
+          $v = (python empaquetar.py --version).Trim()
+          "numero=$v" >> $env:GITHUB_OUTPUT
+          Write-Host "Versión $v"
+
+      - name: Compilar
+        run: python empaquetar.py
+
+      - name: Abrir el ejecutable y comprobar que responde
+        shell: pwsh
+        run: |
+          $env:MAJERIE_DATOS = Join-Path $env:RUNNER_TEMP "majerie-exe"
+          $env:PYINSTALLER_SUPPRESS_SPLASH_SCREEN = "1"
+          $exe = "dist\Sistema de Registro de Horas.exe"
+          $proceso = Start-Process -FilePath $exe -ArgumentList "--sin-ventana", "--puerto", "8791" -PassThru
+          $estado = $null
+          for ($i = 0; $i -lt 90 -and -not $estado; $i++) {
+            Start-Sleep -Seconds 1
+            try { $estado = Invoke-RestMethod -Uri "http://127.0.0.1:8791/estado" -TimeoutSec 5 } catch { }
+          }
+          if (-not $estado) {
+            Get-Content (Join-Path $env:MAJERIE_DATOS "*.log") -ErrorAction SilentlyContinue | Select-Object -Last 60
+            throw "El ejecutable no respondió."
+          }
+          Write-Host "Responde: $($estado.app) $($estado.version)"
+          if ($estado.version -ne "${{ steps.version.outputs.numero }}") { throw "Versión inesperada: $($estado.version)" }
+          foreach ($ruta in "/bienvenida", "/static/estilo.css", "/ayuda/manual/uso.pdf") {
+            $r = Invoke-WebRequest -Uri "http://127.0.0.1:8791$ruta" -UseBasicParsing -TimeoutSec 20
+            if ($r.StatusCode -ne 200) { throw "$ruta respondió $($r.StatusCode)" }
+            Write-Host "OK $ruta"
+          }
+          Stop-Process -Id $proceso.Id -Force
+          Get-ChildItem dist | Format-Table Name, Length
+
+      - name: Guardar como artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: Sistema-de-Registro-de-Horas-${{ steps.version.outputs.numero }}
+          path: dist/Sistema de Registro de Horas/
+          if-no-files-found: error
+
+      - name: Publicar la versión para descargar
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          $v = "${{ steps.version.outputs.numero }}"
+          $etiqueta = "v$v"
+          $zip = "dist/Sistema-de-Registro-de-Horas-$v.zip"
+          $notas = @"
+          Sistema de Registro de Horas $v (compilado del commit ${{ github.sha }}).
+
+          Descargue **Sistema-de-Registro-de-Horas-$v.zip**, descomprímalo y abra
+          ``Sistema de Registro de Horas.exe``. Incluye el Manual de Usuario (PDF y HTML)
+          y el LÉAME con las novedades de esta versión.
+          "@
+          # Una nueva compilación de la misma versión reemplaza a la anterior.
+          $existe = gh release list --limit 100 --json tagName --jq '.[].tagName' | Where-Object { $_ -eq $etiqueta }
+          if ($existe) { gh release delete $etiqueta --cleanup-tag --yes }
+          gh release create $etiqueta $zip --target "${{ github.sha }}" --title "Sistema de Registro de Horas $v" --notes $notas --latest

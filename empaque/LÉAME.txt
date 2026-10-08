@@ -1,0 +1,113 @@
+MAJERIE S.R.L · SISTEMA DE REGISTRO DE HORAS · VERSIÓN 3.1.0
+================================================================
+
+QUÉ HAY EN ESTA CARPETA
+-----------------------
+
+  Sistema de Registro de Horas.exe   El programa. Es un solo archivo:
+                                     no se instala, se abre con doble clic.
+  Manual de Usuario.pdf              Todo: puesta en marcha, uso diario
+                                     y administración.
+  Manual de Usuario.html             El mismo manual, para abrirlo en el
+                                     navegador.
+
+  El manual también se abre desde el menú del propio sistema.
+
+
+QUÉ CAMBIÓ EN LA VERSIÓN 3.1.0
+------------------------------
+
+  * Horas acumuladas más claras. En "Mis horas" hay un desglose
+    "¿Cómo se calcula mi saldo de horas y cuándo se actualiza?" con
+    los números de cada persona. Las horas deber del día cuentan
+    cuando se registra la primera actividad del día (o al día
+    siguiente si no se registra nada): el saldo ya no amanece 8,5 h
+    más bajo. La vista Semana muestra el saldo al cierre de cada día.
+
+  * Vacaciones completas. Se muestra qué vacaciones se descuentan y
+    cuáles no. Las vacaciones en curso se reparten entre disfrutadas y
+    por disfrutar. El traslado de saldo al año siguiente ya no acepta
+    fechas futuras (antes podía dejar días aprobados sin descontar).
+    Al cambiar las fechas de una solicitud se recalculan los días.
+
+  * Avisos por correo. Cuando la administración aprueba o rechaza
+    unas vacaciones o un permiso pagado con horas acumuladas, la
+    persona recibe un correo. Se configura en Configuración ->
+    "Avisos por correo" (capítulo nuevo del manual).
+
+  Conviene que todas las computadoras usen la misma versión: copie
+  este .exe encima del anterior en cada una. Los datos no cambian.
+
+
+DÓNDE VIVEN LOS DATOS
+---------------------
+
+  En el SharePoint de la empresa, dentro de una carpeta compartida.
+  No hace falta servidor, dominio ni alojamiento externo: cada persona
+  abre el .exe en su propia computadora y todas trabajan sobre la misma
+  carpeta de SharePoint.
+
+  El .exe se puede copiar a cualquier lugar (Escritorio, Documentos,
+  una memoria USB) y a cualquier computadora con Windows 10 u 11.
+
+
+ACTUALIZAR DESDE LA VERSIÓN 3.0.0
+---------------------------------
+
+  1. Cierre el sistema (cierre su ventana).
+  2. Reemplace el "Sistema de Registro de Horas.exe" anterior por este.
+  3. Ábralo con doble clic. Entra directo, con la misma carpeta de
+     SharePoint, la misma cuenta y los mismos datos.
+
+
+LA PRIMERA VEZ EN CADA COMPUTADORA
+----------------------------------
+
+  1. Doble clic en "Sistema de Registro de Horas.exe".
+
+  2. Elija el navegador con que se abrirá el sistema (Brave, Chrome,
+     Edge…). Se abre en su propia ventana, como una aplicación.
+
+  3. Pegue el enlace de la carpeta de SharePoint que le dio la empresa.
+
+  4. Entre con su cuenta de Microsoft 365 de la empresa (en la página
+     de Microsoft; la contraseña nunca se escribe en el sistema).
+
+  5. Ingrese con su usuario y contraseña del sistema.
+
+  Las siguientes veces se abre directo en el ingreso.
+
+
+LA PRIMERÍSIMA VEZ (UNA SOLA VEZ PARA TODA LA EMPRESA)
+------------------------------------------------------
+
+  Antes, el administrador de Microsoft 365 de la empresa registra el
+  programa y entrega un "identificador de aplicación". El capítulo 1 del
+  Manual de Usuario lo explica paso a paso (unos 10 minutos).
+
+  La primera computadora que se conecta a la carpeta crea los datos.
+  Si es la computadora donde funcionaba la versión anterior (la de la
+  ventana negra), el sistema ofrece subir esos datos tal cual: usuarios,
+  contraseñas, horas, ausencias, proyectos y tarifas. Cierre la ventana
+  negra de la versión anterior antes de hacerlo y no la vuelva a usar.
+
+
+SI WINDOWS DESCONFÍA DEL PROGRAMA
+---------------------------------
+
+  Puede aparecer una pantalla azul: "Windows protegió su PC". Pasa con
+  todo programa que no paga un certificado de firma digital.
+
+     1. Pulse "Más información".
+     2. Pulse "Ejecutar de todas formas".
+
+  Si al hacer doble clic no pasa nada: clic derecho sobre el .exe ->
+  Propiedades -> marque "Desbloquear" -> Aceptar.
+
+
+AYUDA
+-----
+
+  Si algo falla, el sistema lo dice en pantalla. En Ajustes ->
+  "Acerca del programa" -> "Ver las últimas líneas" está el detalle
+  técnico para quien dé soporte.

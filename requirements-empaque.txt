@@ -1,0 +1,3 @@
+# Solo para compilar el ejecutable de Windows (empaquetar.py).
+-r requirements.txt
+pyinstaller==6.22.3

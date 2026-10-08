@@ -31,7 +31,7 @@ EMPAQUETADO = getattr(sys, "frozen", False)
 
 NOMBRE_APP = "Sistema de Registro de Horas"
 EMPRESA = "MAJERIE S.R.L"
-VERSION = "3.0.0"
+VERSION = "3.1.0"
 
 # Identificador estable del programa (candado de instancia única…).
 ID_APP = "majerie-registro-horas"
