@@ -1,0 +1,154 @@
+{# Envoltura de las pantallas con sesión: barra superior, contenido y pie.
+   Equivale a `AppShell` + `TopBar` del sistema original. #}
+{% extends "base.html" %}
+
+{% block cuerpo %}
+  <div class="armazon">
+    <header class="barra">
+      <div class="barra-interior">
+        <div class="barra-izquierda">
+          <a class="barra-logo" href="{{ url_for('sesion.raiz') }}" aria-label="Inicio">
+            {{ logo('13px') }}
+          </a>
+          <span class="barra-separador" aria-hidden="true"></span>
+          <div class="navegacion-ancha">{{ navegacion() }}</div>
+        </div>
+
+        <div class="barra-derecha">
+          {{ indicador_nube() }}
+
+          <button type="button" class="boton-tema" data-alternar-tema
+                  aria-label="Cambiar entre tema claro y oscuro" title="Tema claro u oscuro">
+            <span class="icono-sol">{{ icono('sol', '17px', 1.8) }}</span>
+            <span class="icono-luna">{{ icono('luna', '17px', 1.8) }}</span>
+          </button>
+
+          {% if usuario %}
+            <div class="menu-usuario" id="menu-usuario">
+              <button type="button" class="menu-disparador" aria-haspopup="menu"
+                      aria-expanded="false" id="menu-disparador">
+                <span class="avatar">{{ usuario.initials }}</span>
+                <span class="menu-identidad">
+                  <b>{{ usuario.actingAs }}</b>
+                  <span>{{ usuario.role }}</span>
+                </span>
+                <svg class="menu-flecha" viewBox="0 0 20 20" fill="none" stroke="currentColor"
+                     stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"
+                     aria-hidden="true">
+                  <path d="m6 8 4 4 4-4" />
+                </svg>
+              </button>
+
+              <div class="menu-panel oculto" role="menu" id="menu-panel">
+                <div class="menu-cabecera">
+                  <b>{{ usuario.actingAs }}</b>
+                  <span>Usuario «{{ usuario.username }}»</span>
+                </div>
+                <div class="menu-lista">
+                  <a href="{{ url_for('sesion.cuenta') }}" role="menuitem">
+                    <span class="menu-icono">{{ icono('llave', '16px') }}</span>
+                    Cambiar mi contraseña
+                  </a>
+                  {% if usuario.role == 'administrador' %}
+                    <a href="{{ url_for('sesion.identidad') }}" role="menuitem">
+                      <span class="menu-icono">{{ icono('usuario-config', '16px') }}</span>
+                      Cambiar de identidad
+                    </a>
+                  {% endif %}
+                  <a href="{{ url_for('ajustes.ajustes_inicio') }}" role="menuitem">
+                    <span class="menu-icono">{{ icono('engranaje', '16px') }}</span>
+                    Ajustes de esta computadora
+                  </a>
+                  <a href="{{ url_for('ajustes.manual', perfil='uso') }}" role="menuitem"
+                     target="_blank" rel="noopener">
+                    <span class="menu-icono">{{ icono('libro', '16px') }}</span>
+                    Manual de uso
+                  </a>
+                </div>
+                <div class="menu-salida">
+                  <form method="post" action="{{ url_for('sesion.salir') }}" data-local>
+                    <button type="submit" role="menuitem">
+                      <span class="menu-icono">{{ icono('salir', '16px') }}</span>
+                      Salir del sistema
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      {# En pantallas estrechas la navegación ocupa su propia franja. #}
+      <div class="navegacion-estrecha">
+        <div>{{ navegacion() }}</div>
+      </div>
+    </header>
+
+    <div id="franjas"></div>
+
+    <main class="contenido">
+      {% block pantalla %}{% endblock %}
+    </main>
+
+    <footer class="pie">
+      <div class="pie-interior">
+        <p>
+          <strong>MAJERIE S.R.L</strong>
+          <span class="separador" aria-hidden="true">·</span>
+          Sistema de Registro de Horas
+          <span class="separador" aria-hidden="true">·</span>
+          versión {{ VERSION }}
+        </p>
+        <p>
+          <span class="punto-vivo" aria-hidden="true"></span>
+          {% if nube and nube.configurado %}
+            Datos en el SharePoint de la empresa{% if nube.carpeta %} · carpeta «{{ nube.carpeta }}»{% endif %}
+          {% else %}
+            Uso interno · Acceso restringido
+          {% endif %}
+        </p>
+      </div>
+    </footer>
+  </div>
+{% endblock %}
+
+
+{% macro navegacion() %}
+  {% set enlaces = (
+      [('panel.dashboard', 'Dashboard', false),
+       ('panel.aprobaciones', 'Aprobaciones', true),
+       ('panel.configuracion', 'Configuración', false)]
+      if usuario and usuario.role == 'administrador' else
+      [('registro.registro', 'Mis horas', false),
+       ('registro.ausencias', 'Ausencias', false),
+       ('registro.proyectos', 'Proyectos', false)]
+      if usuario else []
+  ) %}
+  <nav class="navegacion">
+    {% for destino, texto, con_contador in enlaces %}
+      {% set ruta = url_for(destino) %}
+      <a href="{{ ruta }}" {% if request.path == ruta %}aria-current="page"{% endif %}>
+        {{ texto }}
+        {% if con_contador and pendientes_totales %}
+          <span class="contador">{{ pendientes_totales }}</span>
+        {% endif %}
+      </a>
+    {% endfor %}
+  </nav>
+{% endmacro %}
+
+
+{% macro indicador_nube() %}
+  {% if nube %}
+    <a class="nube" id="nube" href="{{ url_for('ajustes.ajustes_inicio') }}"
+       data-estado="{{ 'sin-conexion' if nube.en_linea == false else 'ok' }}"
+       title="Conexión con SharePoint">
+      <span class="nube-icono">
+        {{ icono('nube', '18px', 1.7) }}
+        <span class="nube-punto" aria-hidden="true"></span>
+      </span>
+      <span class="nube-texto">SharePoint</span>
+    </a>
+  {% endif %}
+{% endmacro %}

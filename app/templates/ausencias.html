@@ -1,0 +1,256 @@
+{% extends "armazon.html" %}
+{% from "piezas.html" import encabezado, indicador, insignia_ausencia, insignia_tipo, vacio %}
+{% block titulo %}Vacaciones y ausencias · MAJERIE S.R.L{% endblock %}
+
+{% block pantalla %}
+  <div class="pila">
+    {{ encabezado(
+        'Colaborador',
+        'Vacaciones y ausencias',
+        'Solicite vacaciones, permisos personales, citas médicas o incapacidades. '
+        ~ 'Toda solicitud requiere la aprobación del administrador y los días de '
+        ~ 'vacaciones aprobados se descuentan del saldo.') }}
+
+    <div class="rejilla-indicadores surge" style="animation-delay:70ms">
+      {{ indicador('palmera', 'Vacaciones disponibles',
+                   formatear_numero(vacaciones.available, 1) ~ ' días',
+                   'Saldo vigente del año ' ~ anio, 'acento') }}
+      {{ indicador('calendario-rango', 'Aprobados por disfrutar',
+                   formatear_numero(vacaciones.scheduled, 1) ~ ' días',
+                   formatear_numero(vacaciones.taken, 1) ~ ' días ya disfrutados') }}
+      {{ indicador('reloj-arena', 'Horas acumuladas',
+                   ('+' if acumuladas > 0 else '') ~ formatear_horas(acumuladas),
+                   'Usables en permisos personales remunerados') }}
+      {{ indicador('escudo-alerta', 'Solicitudes pendientes', totales.pendingRequests,
+                   (formatear_numero(vacaciones.pending, 1) ~ ' días de vacaciones en espera')
+                   if vacaciones.pending else 'Sin solicitudes en espera',
+                   'pendiente' if totales.pendingRequests else '') }}
+    </div>
+
+    <div class="rejilla surge" style="animation-delay:140ms;grid-template-columns:1fr;gap:20px">
+      <section class="tarjeta tarjeta--recorta">
+        <div class="tarjeta-encabezado">
+          <div>
+            <h2>Saldo de vacaciones {{ anio }}</h2>
+            <p>Base anual más los días acumulados del año anterior, menos los días
+               ya aprobados.</p>
+          </div>
+        </div>
+        <div class="tarjeta-cuerpo">
+          <dl class="rejilla rejilla--4" style="gap:20px">
+            {% for etiqueta_saldo, valor_saldo, pista_saldo in [
+                ('Base anual', formatear_numero(vacaciones.annual, 0) ~ ' días', none),
+                ('Acumulado del año anterior', formatear_numero(vacaciones.carried, 1) ~ ' días', none),
+                ('Aprobados', formatear_numero(vacaciones.taken + vacaciones.scheduled, 1) ~ ' días',
+                 formatear_numero(vacaciones.taken, 1) ~ ' disfrutados · ' ~ formatear_numero(vacaciones.scheduled, 1) ~ ' por disfrutar'),
+                ('Disponibles', formatear_numero(vacaciones.available, 1) ~ ' días',
+                 (formatear_numero(vacaciones.pending, 1) ~ ' días en espera de aprobación') if vacaciones.pending else none)] %}
+              <div>
+                <dt class="indicador-titulo">{{ etiqueta_saldo }}</dt>
+                <dd class="texto-fuerte tabulares" style="font-size:18px;margin-top:4px">{{ valor_saldo }}</dd>
+                {% if pista_saldo %}<p class="texto-menudo texto-apagado">{{ pista_saldo }}</p>{% endif %}
+              </div>
+            {% endfor %}
+          </dl>
+        </div>
+      </section>
+
+      <section class="tarjeta tarjeta--recorta">
+        <div class="tarjeta-encabezado">
+          <div>
+            <h2>Solicitar vacaciones o una ausencia</h2>
+            <p>Todas las solicitudes requieren la aprobación del administrador. Los
+               días de vacaciones aprobados se descuentan del saldo automáticamente.</p>
+          </div>
+        </div>
+
+        <form method="post" class="tarjeta-cuerpo" id="formulario-ausencia">
+          <input type="hidden" name="accion" value="solicitar" />
+
+          <div class="rejilla rejilla--2">
+            <div class="campo">
+              <label for="kind">Tipo de ausencia<span class="campo-requerido">*</span></label>
+              <select class="control" id="kind" name="kind" required>
+                {% for tipo in TIPOS_AUSENCIA %}
+                  <option value="{{ tipo.value }}" data-pista="{{ tipo.hint }}">{{ tipo.label }}</option>
+                {% endfor %}
+              </select>
+              <p class="campo-pista" id="pista-tipo">{{ TIPOS_AUSENCIA[0].hint }}</p>
+            </div>
+
+            <div class="campo">
+              <label for="days">Días solicitados<span class="campo-requerido">*</span></label>
+              <input class="control control-numero" type="number" id="days" name="days"
+                     min="0.5" step="0.5" value="1" required />
+              <p class="campo-pista" id="pista-dias">Use 0,5 para medio día.</p>
+            </div>
+
+            <div class="campo">
+              <label for="from_date">Desde<span class="campo-requerido">*</span></label>
+              <input class="control" type="date" id="from_date" name="from_date"
+                     value="{{ hoy }}" required />
+            </div>
+
+            <div class="campo">
+              <label for="to_date">Hasta<span class="campo-requerido">*</span></label>
+              <input class="control" type="date" id="to_date" name="to_date"
+                     value="{{ hoy }}" required />
+            </div>
+
+            <div class="campo" id="campo-horas" hidden>
+              <label for="accumulatedHours">Horas acumuladas por usar</label>
+              <input class="control control-numero" type="number" id="accumulatedHours"
+                     name="accumulatedHours" min="0" step="0.25" value="0" />
+              <p class="campo-pista">
+                Saldo disponible: {{ formatear_numero(acumuladas) }} h. Solo el permiso
+                personal puede pagarse con horas acumuladas.
+              </p>
+            </div>
+          </div>
+
+          <div class="campo" style="margin-top:20px">
+            <label for="notes">Observaciones<span class="campo-requerido">*</span></label>
+            <textarea class="control" id="notes" name="notes" required
+                      placeholder="Ejemplo: vacaciones familiares programadas."></textarea>
+            <p class="campo-pista">Explique el motivo para que el administrador pueda resolver.</p>
+          </div>
+
+          <div class="fila" style="margin-top:20px">
+            <button class="boton boton--primario" type="submit" data-texto-ocupado="Enviando…">
+              {{ icono('mas', '16px', 2) }} <span>Enviar la solicitud</span>
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <section class="tarjeta tarjeta--recorta surge" style="animation-delay:200ms">
+      <div class="tarjeta-encabezado">
+        <div>
+          <h2>Mis solicitudes</h2>
+          <p>{{ ausencias|length }}
+             {{ 'solicitud' if ausencias|length == 1 else 'solicitudes' }} ·
+             primero las que esperan resolución.</p>
+        </div>
+      </div>
+
+      {% if not ausencias %}
+        {{ vacio('palmera', 'Sin solicitudes',
+                 'Cuando solicite vacaciones o una ausencia, aparecerá aquí con su estado.') }}
+      {% else %}
+        <ul class="lista-dividida escalonado">
+          {% for ausencia in ausencias %}
+            <li>
+              <div class="fila fila--separada" style="align-items:flex-start">
+                <div style="min-width:0;flex:1">
+                  <p class="fila" style="gap:8px">
+                    {{ insignia_tipo(ausencia.kind) }}
+                    {{ insignia_ausencia(ausencia.status) }}
+                    <span class="texto-pequeno texto-tenue tabulares">
+                      {{ formatear_rango(ausencia.from_date, ausencia.to_date) }} ·
+                      {{ formatear_numero(ausencia.days, 1) }}
+                      {{ 'día' if ausencia.days == 1 else 'días' }}
+                      {% if ausencia.accumulatedHours %}
+                        · {{ formatear_horas(ausencia.accumulatedHours) }} de horas acumuladas
+                      {% endif %}
+                    </span>
+                  </p>
+                  <p class="texto-pequeno texto-tenue" style="margin-top:6px">{{ ausencia.notes }}</p>
+                  {% if ausencia.decidedBy %}
+                    <p class="texto-menudo texto-apagado" style="margin-top:4px">
+                      Resuelta por {{ ausencia.decidedBy }}
+                      {% if ausencia.decidedAt %} el {{ formatear_fecha(ausencia.decidedAt) }}{% endif %}
+                      {% if ausencia.decisionNote %} · «{{ ausencia.decisionNote }}»{% endif %}
+                    </p>
+                  {% endif %}
+                </div>
+
+                {% if puede_retirar(ausencia) %}
+                  <form method="post">
+                    <input type="hidden" name="accion" value="retirar" />
+                    <input type="hidden" name="id" value="{{ ausencia.id }}" />
+                    <button class="boton boton--secundario boton--sm" type="submit"
+                            data-confirmar="¿Eliminar esta {{ ETIQUETAS_TIPO[ausencia.kind]|lower }}?">
+                      {{ 'Retirar' if ausencia.status == 'pendiente' else 'Eliminar' }}
+                    </button>
+                  </form>
+                {% elif ausencia.status == 'aprobada' %}
+                  <span class="texto-menudo texto-apagado" style="max-width:11rem;text-align:right">
+                    Ya empezó. Para eliminarla, pídaselo a la administración.
+                  </span>
+                {% endif %}
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </section>
+  </div>
+{% endblock %}
+
+
+{% block guiones %}
+  {{ super() }}
+  <script>
+    // Días hábiles propuestos y campo de horas acumuladas, como en la versión
+    // original: la propuesta se calcula sola y la persona puede ajustarla.
+    (function () {
+      const tipo = document.getElementById("kind");
+      const desde = document.getElementById("from_date");
+      const hasta = document.getElementById("to_date");
+      const dias = document.getElementById("days");
+      const pistaTipo = document.getElementById("pista-tipo");
+      const pistaDias = document.getElementById("pista-dias");
+      const campoHoras = document.getElementById("campo-horas");
+      if (!tipo || !desde || !hasta || !dias) return;
+
+      const FERIADOS = new Set({{ feriados_json | default('[]') | safe }});
+
+      // La fecha se arma con la hora local: `toISOString` la pasaba a UTC y,
+      // en una computadora con zona horaria al este de Greenwich, los
+      // feriados quedaban corridos un día.
+      const iso = (fecha) =>
+        fecha.getFullYear() + "-" + String(fecha.getMonth() + 1).padStart(2, "0") + "-" +
+        String(fecha.getDate()).padStart(2, "0");
+
+      const habiles = () => {
+        if (!desde.value || !hasta.value || hasta.value < desde.value) return 0;
+        let total = 0;
+        const cursor = new Date(desde.value + "T00:00:00");
+        const fin = new Date(hasta.value + "T00:00:00");
+        let guarda = 0;
+        while (cursor <= fin && guarda < 800) {
+          const dia = cursor.getDay();
+          if (dia !== 0 && dia !== 6 && !FERIADOS.has(iso(cursor))) total += 1;
+          cursor.setDate(cursor.getDate() + 1);
+          guarda += 1;
+        }
+        return total;
+      };
+
+      const refrescar = () => {
+        const sugeridos = habiles();
+        pistaDias.textContent =
+          "Días hábiles del rango: " + sugeridos + ". Use 0,5 para medio día.";
+        if (!dias.dataset.tocado) dias.value = sugeridos || 1;
+
+        const opcion = tipo.options[tipo.selectedIndex];
+        pistaTipo.textContent = opcion ? opcion.dataset.pista : "";
+        campoHoras.hidden = tipo.value !== "permiso-personal";
+        // Las horas acumuladas solo valen para el permiso personal.
+        if (campoHoras.hidden) {
+          const horas = document.getElementById("accumulatedHours");
+          if (horas) horas.value = 0;
+        }
+      };
+
+      dias.addEventListener("input", () => { dias.dataset.tocado = "1"; });
+      [tipo, desde, hasta].forEach((campo) => campo.addEventListener("change", refrescar));
+      desde.addEventListener("change", () => {
+        if (hasta.value < desde.value) hasta.value = desde.value;
+        refrescar();
+      });
+      refrescar();
+    })();
+  </script>
+{% endblock %}

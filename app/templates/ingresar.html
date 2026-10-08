@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block titulo %}Ingresar · MAJERIE S.R.L{% endblock %}
+
+{% block cuerpo %}
+  <div class="pantalla-centro superficie">
+    <div class="halos" aria-hidden="true">
+      <span class="halo-acento deriva"></span>
+      <span class="halo-gris deriva"></span>
+    </div>
+
+    <main class="panel-centro">
+      <div class="panel-tarjeta surge">
+        <div class="panel-centrado">
+          {{ logo('19px', animado=true) }}
+          <p class="panel-subtitulo aparece" style="animation-delay:1100ms">Sistema de Registro de Horas</p>
+          <span class="panel-hilo aparece" style="animation-delay:1200ms" aria-hidden="true"></span>
+          <h1 class="panel-titulo surge" style="animation-delay:1250ms">Ingrese a su cuenta</h1>
+          <p class="panel-texto surge" style="animation-delay:1300ms">
+            Ingrese con el usuario y la contraseña que le entregó la administración.
+          </p>
+        </div>
+
+        <form method="post" class="panel-formulario surge" style="animation-delay:1380ms" data-local>
+          <div class="campo">
+            <label for="username">Usuario<span class="campo-requerido">*</span></label>
+            <input class="control {{ 'control--invalido' if error }}" id="username"
+                   name="username" autocomplete="username" autocapitalize="none"
+                   spellcheck="false" value="{{ username or '' }}" required data-enfocar />
+          </div>
+
+          <div class="campo">
+            <label for="password">Contraseña<span class="campo-requerido">*</span></label>
+            <input class="control {{ 'control--invalido' if error }}" id="password"
+                   name="password" type="password" autocomplete="current-password" required />
+          </div>
+
+          <label class="fila texto-pequeno texto-tenue" style="gap:8px;cursor:pointer">
+            <input type="checkbox" name="recordar" value="1" {{ 'checked' if recordar }} />
+            Mantener la sesión iniciada en esta computadora
+          </label>
+
+          {% if error %}
+            <p role="alert" class="aviso-error temblor">
+              {{ icono('candado', '16px') }}<span>{{ error }}</span>
+            </p>
+          {% endif %}
+
+          <button type="submit" class="boton boton--primario boton--lg boton--ancho"
+                  data-texto-ocupado="Ingresando…">
+            Ingresar {{ icono('flecha-derecha', '16px') }}
+          </button>
+        </form>
+      </div>
+
+      <p class="panel-nota aparece" style="animation-delay:1500ms">
+        ¿Olvidó su contraseña? Solicite una nueva a la administración.
+        <br />
+        {% if nube and nube.configurado %}
+          <span class="punto-vivo" aria-hidden="true"></span>Datos en SharePoint{% if nube.carpeta %} · «{{ nube.carpeta }}»{% endif %} ·
+        {% endif %}
+        <a href="{{ url_for('ajustes.ajustes_inicio') }}">Ajustes de esta computadora</a>
+      </p>
+    </main>
+  </div>
+{% endblock %}

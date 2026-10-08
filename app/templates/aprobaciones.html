@@ -1,0 +1,224 @@
+{% extends "armazon.html" %}
+{% from "piezas.html" import encabezado, indicador, insignia_estado, insignia_ausencia, insignia_tipo, vacio %}
+{% block titulo %}Aprobaciones · MAJERIE S.R.L{% endblock %}
+
+{% block pantalla %}
+  <div class="pila">
+    {{ encabezado(
+        'Administrador',
+        'Aprobaciones',
+        'Resuelva las vacaciones, las demás ausencias y los registros de horas con '
+        ~ 'más de ' ~ VENTANA_APROBACION ~ ' días de antigüedad. Nada de esto se '
+        ~ 'aplica hasta que usted lo apruebe.') }}
+
+    <div class="rejilla-indicadores rejilla-indicadores--tres surge" style="animation-delay:70ms">
+      {{ indicador('calendario-reloj', 'Horas por aprobar', registros_pendientes|length,
+                   'Registros y cambios con más de ' ~ VENTANA_APROBACION ~ ' días',
+                   'pendiente' if registros_pendientes else '') }}
+      {{ indicador('palmera', 'Ausencias por aprobar', ausencias_pendientes|length,
+                   'Vacaciones, permisos, citas e incapacidades',
+                   'pendiente' if ausencias_pendientes else '') }}
+      {{ indicador('doble-visto', 'Resueltas', ausencias_resueltas|length,
+                   'Ausencias ya aprobadas o rechazadas') }}
+    </div>
+
+    <div class="surge" style="animation-delay:140ms">
+      <div class="pestanas" role="tablist" aria-label="Bandeja de aprobaciones">
+        {% for clave, texto_pestana, nombre_icono, contador in [
+            ('horas', 'Horas', 'calendario-reloj', registros_pendientes|length),
+            ('ausencias', 'Ausencias', 'palmera', ausencias_pendientes|length),
+            ('historial', 'Resueltas', 'portapapeles-visto', 0)] %}
+          <a class="pestana" role="tab" aria-selected="{{ 'true' if vista == clave else 'false' }}"
+             href="{{ url_for('panel.aprobaciones', vista=clave) }}">
+            {{ icono(nombre_icono, '14px', 1.9) }}{{ texto_pestana }}
+            {% if contador %}<span class="pestana-contador">{{ contador }}</span>{% endif %}
+          </a>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="surge" style="animation-delay:190ms">
+      {% if vista == 'horas' %}
+        <section class="tarjeta tarjeta--recorta">
+          <div class="tarjeta-encabezado">
+            <div>
+              <h2>Registros de horas pendientes</h2>
+              <p>Altas, modificaciones y eliminaciones de jornadas con más de
+                 {{ VENTANA_APROBACION }} días de antigüedad.</p>
+            </div>
+          </div>
+
+          {% if not registros_pendientes %}
+            {{ vacio('doble-visto', 'Nada por aprobar',
+                     'Todos los registros de horas del equipo están al día.') }}
+          {% else %}
+            <ul class="lista-dividida">
+              {% for item in registros_pendientes %}
+                {% set proyecto = proyecto_de(item.projectId) %}
+                <li>
+                  <div class="fila fila--separada" style="align-items:flex-start">
+                    <div style="min-width:0;flex:1">
+                      <div class="fila" style="gap:8px">
+                        {{ insignia_estado(item.pendingAction) }}
+                        <span class="texto-pequeno texto-fuerte">{{ nombre_de(item.userId) }}</span>
+                        <span class="texto-pequeno texto-tenue tabulares">
+                          {{ formatear_fecha(item.date) }} · {{ item.start }} – {{ item.end }} ·
+                          {{ formatear_numero(item.hours) }} h
+                        </span>
+                      </div>
+                      <p class="texto-pequeno texto-tenue" style="margin-top:6px">
+                        <span style="font-weight:500;color:var(--texto)">
+                          {{ proyecto.code if proyecto else '—' }} {{ item.projectName }}
+                        </span>
+                        <span class="separador" aria-hidden="true">·</span>{{ item.notes }}
+                      </p>
+                      <p class="texto-menudo texto-pendiente" style="margin-top:4px">
+                        {{ item.pendingReason }}
+                      </p>
+                    </div>
+
+                    <div class="fila" style="gap:8px;flex-wrap:nowrap">
+                      <form method="post">
+                        <input type="hidden" name="accion" value="aprobar-registro" />
+                        <input type="hidden" name="id" value="{{ item.id }}" />
+                        <input type="hidden" name="vista" value="horas" />
+                        <button class="boton boton--primario boton--sm" type="submit">Aprobar</button>
+                      </form>
+                      <form method="post">
+                        <input type="hidden" name="accion" value="rechazar-registro" />
+                        <input type="hidden" name="id" value="{{ item.id }}" />
+                        <input type="hidden" name="vista" value="horas" />
+                        <button class="boton boton--secundario boton--sm" type="submit"
+                                data-confirmar="¿Rechazar este cambio? Si era un registro nuevo, se descarta.">
+                          Rechazar
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                </li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+        </section>
+
+      {% elif vista == 'ausencias' %}
+        <section class="tarjeta tarjeta--recorta">
+          <div class="tarjeta-encabezado">
+            <div>
+              <h2>Ausencias pendientes</h2>
+              <p>Vacaciones, permisos personales, citas médicas e incapacidades a la
+                 espera de resolución. Puede dejar un comentario al resolver.</p>
+            </div>
+          </div>
+
+          {% if not ausencias_pendientes %}
+            {{ vacio('doble-visto', 'Nada por aprobar',
+                     'No hay solicitudes de ausencia esperando resolución.') }}
+          {% else %}
+            <ul class="lista-dividida">
+              {% for ausencia in ausencias_pendientes %}
+                <li>
+                  <div class="fila" style="gap:8px">
+                    {{ insignia_tipo(ausencia.kind) }}
+                    <span class="texto-pequeno texto-fuerte">{{ nombre_de(ausencia.userId) }}</span>
+                    <span class="texto-pequeno texto-tenue tabulares">
+                      {{ formatear_rango(ausencia.from_date, ausencia.to_date) }} ·
+                      {{ formatear_numero(ausencia.days, 1) }}
+                      {{ 'día' if ausencia.days == 1 else 'días' }}
+                      {% if ausencia.accumulatedHours %}
+                        · {{ formatear_horas(ausencia.accumulatedHours) }} de horas acumuladas
+                      {% endif %}
+                    </span>
+                  </div>
+                  <p class="texto-pequeno texto-tenue" style="margin-top:6px">{{ ausencia.notes }}</p>
+                  <p class="texto-menudo texto-apagado" style="margin-top:4px">
+                    Solicitada el {{ formatear_fecha(ausencia.createdAt) }}
+                  </p>
+
+                  <div class="fila" style="margin-top:12px;gap:8px">
+                    <form method="post" class="fila" style="gap:8px;flex:1;min-width:0">
+                      <input type="hidden" name="accion" value="aprobar-ausencia" />
+                      <input type="hidden" name="id" value="{{ ausencia.id }}" />
+                      <input type="hidden" name="vista" value="ausencias" />
+                      <input class="control control--compacto" name="nota" style="flex:1;min-width:8rem"
+                             placeholder="Comentario para la persona (opcional)" />
+                      <button class="boton boton--primario boton--sm" type="submit">Aprobar</button>
+                    </form>
+                    <form method="post">
+                      <input type="hidden" name="accion" value="rechazar-ausencia" />
+                      <input type="hidden" name="id" value="{{ ausencia.id }}" />
+                      <input type="hidden" name="vista" value="ausencias" />
+                      <button class="boton boton--secundario boton--sm" type="submit"
+                              data-confirmar="¿Rechazar esta solicitud?">Rechazar</button>
+                    </form>
+                    <form method="post">
+                      <input type="hidden" name="accion" value="eliminar-ausencia" />
+                      <input type="hidden" name="id" value="{{ ausencia.id }}" />
+                      <input type="hidden" name="vista" value="ausencias" />
+                      <button class="boton-icono boton-icono--peligro" type="submit"
+                              aria-label="Eliminar la solicitud"
+                              data-confirmar="¿Eliminar esta solicitud del sistema? No queda registro de ella.">
+                        {{ icono('papelera', '14px') }}
+                      </button>
+                    </form>
+                  </div>
+                </li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+        </section>
+
+      {% else %}
+        <section class="tarjeta tarjeta--recorta">
+          <div class="tarjeta-encabezado">
+            <div>
+              <h2>Solicitudes resueltas</h2>
+              <p>Historial de ausencias aprobadas y rechazadas, con el nombre de
+                 quien las resolvió.</p>
+            </div>
+          </div>
+
+          {% if not ausencias_resueltas %}
+            {{ vacio('portapapeles-visto', 'Sin historial',
+                     'Todavía no se ha resuelto ninguna solicitud de ausencia.') }}
+          {% else %}
+            <ul class="lista-dividida">
+              {% for ausencia in ausencias_resueltas %}
+                <li>
+                  <div class="fila" style="gap:8px">
+                    {{ insignia_tipo(ausencia.kind) }}
+                    {{ insignia_ausencia(ausencia.status) }}
+                    <span class="texto-pequeno texto-fuerte">{{ nombre_de(ausencia.userId) }}</span>
+                    <span class="texto-pequeno texto-tenue tabulares">
+                      {{ formatear_rango(ausencia.from_date, ausencia.to_date) }} ·
+                      {{ formatear_numero(ausencia.days, 1) }}
+                      {{ 'día' if ausencia.days == 1 else 'días' }}
+                    </span>
+                  </div>
+                  <p class="texto-pequeno texto-tenue" style="margin-top:6px">{{ ausencia.notes }}</p>
+                  <div class="fila fila--separada" style="margin-top:4px">
+                    <p class="texto-menudo texto-apagado">
+                      Resuelta por {{ ausencia.decidedBy or '—' }}
+                      {% if ausencia.decidedAt %} el {{ formatear_fecha(ausencia.decidedAt) }}{% endif %}
+                      {% if ausencia.decisionNote %} · «{{ ausencia.decisionNote }}»{% endif %}
+                    </p>
+                    {# Por si hay que corregir unas vacaciones ya resueltas. #}
+                    <form method="post">
+                      <input type="hidden" name="accion" value="eliminar-ausencia" />
+                      <input type="hidden" name="id" value="{{ ausencia.id }}" />
+                      <input type="hidden" name="vista" value="historial" />
+                      <button class="boton boton--secundario boton--sm" type="submit"
+                              data-confirmar="¿Eliminar esta {{ ETIQUETAS_TIPO[ausencia.kind]|lower }} de {{ nombre_de(ausencia.userId) }}? Los días vuelven a su saldo.">
+                        {{ icono('papelera', '14px') }} Eliminar
+                      </button>
+                    </form>
+                  </div>
+                </li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+        </section>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

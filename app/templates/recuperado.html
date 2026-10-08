@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block titulo %}Acceso recuperado · MAJERIE S.R.L{% endblock %}
+
+{% block cuerpo %}
+  <div class="pantalla-centro superficie">
+    <div class="halos" aria-hidden="true"><span class="halo-acento deriva"></span></div>
+    <main class="panel-centro">
+      <div class="panel-tarjeta surge" style="text-align:center">
+        <div class="panel-centrado">
+          {{ logo('16px') }}
+          <span class="vacio-icono" style="margin-top:28px">{{ icono('llave', '20px', 1.7) }}</span>
+          <h1 class="panel-titulo" style="margin-top:16px">Contraseña nueva de administración</h1>
+          <p class="panel-texto">Anótela ahora: no se vuelve a mostrar. La anterior ya no sirve.</p>
+        </div>
+        <dl class="pila-corta" style="margin-top:24px;text-align:left">
+          <div class="aviso-info" style="justify-content:space-between">
+            <span>Usuario</span><b class="codigo">{{ usuario }}</b>
+          </div>
+          <div class="aviso-info" style="justify-content:space-between">
+            <span>Contraseña</span><b class="codigo" id="contrasena">{{ contrasena }}</b>
+          </div>
+        </dl>
+        <div class="fila" style="margin-top:22px;justify-content:center;gap:8px">
+          <button class="boton boton--secundario" type="button"
+                  onclick="navigator.clipboard.writeText(document.getElementById('contrasena').textContent).then(() => window.MAJERIE && window.MAJERIE.avisar('Contraseña copiada.'))">
+            {{ icono('copiar', '15px') }} <span>Copiar</span>
+          </button>
+          <a class="boton boton--primario" href="{{ url_for('sesion.ingresar') }}">
+            <span>Ir a ingresar</span> {{ icono('flecha-derecha', '15px') }}
+          </a>
+        </div>
+      </div>
+    </main>
+  </div>
+{% endblock %}

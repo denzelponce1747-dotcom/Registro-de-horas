@@ -1,0 +1,170 @@
+{# ===========================================================================
+   Piezas reutilizables de la interfaz.
+
+   Equivalen a los componentes de `src/components/ui` y `src/components/layout`
+   del sistema original: tarjetas, encabezados, indicadores, insignias,
+   pestañas y estados vacíos.
+   =========================================================================== #}
+
+{% macro encabezado(ojal, titulo, descripcion=none, sello=none) %}
+  <header class="encabezado-pagina surge">
+    <div class="encabezado-texto">
+      {% if ojal %}<p class="encabezado-ojal">{{ ojal }}</p>{% endif %}
+      <h1>{{ titulo }}</h1>
+      {% if descripcion %}<p class="encabezado-descripcion">{{ descripcion }}</p>{% endif %}
+      {% if sello %}<p class="encabezado-sello">{{ sello }}</p>{% endif %}
+    </div>
+    {% if caller %}<div class="encabezado-acciones">{{ caller() }}</div>{% endif %}
+  </header>
+{% endmacro %}
+
+
+{% macro indicador(nombre_icono, etiqueta, valor, pista=none, tono='') %}
+  <article class="tarjeta indicador {{ 'indicador--acento' if tono == 'acento' else ('indicador--pendiente' if tono == 'pendiente' else '') }}">
+    <div class="indicador-cabecera">
+      <p class="indicador-titulo">{{ etiqueta }}</p>
+      <span class="indicador-icono">{{ icono(nombre_icono, '18px', 1.7) }}</span>
+    </div>
+    <p class="indicador-valor">{{ valor }}</p>
+    {% if pista %}<p class="indicador-pista">{{ pista }}</p>{% endif %}
+  </article>
+{% endmacro %}
+
+
+{% macro insignia_estado(accion) %}
+  {% if not accion %}
+    <span class="insignia insignia--aprobado">
+      <span class="insignia-punto" aria-hidden="true"></span>Aprobado
+    </span>
+  {% else %}
+    <span class="insignia insignia--pendiente">
+      <span class="insignia-punto" aria-hidden="true"></span>
+      {{ ETIQUETAS_ACCION[accion] }} por aprobar
+    </span>
+  {% endif %}
+{% endmacro %}
+
+
+{% macro insignia_ausencia(estado) %}
+  {% set textos = {'pendiente': 'Pendiente', 'aprobada': 'Aprobada', 'rechazada': 'Rechazada'} %}
+  <span class="insignia insignia--{{ estado }}">
+    <span class="insignia-punto" aria-hidden="true"></span>{{ textos[estado] }}
+  </span>
+{% endmacro %}
+
+
+{% macro insignia_tipo(kind) %}
+  <span class="insignia {{ 'insignia--vacaciones' if kind == 'vacaciones' else 'insignia--neutra' }}">
+    {{ ETIQUETAS_TIPO[kind] }}
+  </span>
+{% endmacro %}
+
+
+{% macro vacio(nombre_icono, titulo, descripcion) %}
+  <div class="vacio">
+    <span class="vacio-icono">{{ icono(nombre_icono, '20px', 1.6) }}</span>
+    <div>
+      <b>{{ titulo }}</b>
+      <p>{{ descripcion }}</p>
+    </div>
+  </div>
+{% endmacro %}
+
+
+{% macro campo(etiqueta, nombre, tipo='text', valor='', requerido=false, pista=none,
+               marcador='', paso=none, minimo=none, maximo=none, compacto=false,
+               autocompletar=none, identificador=none) %}
+  {% set id_campo = identificador or nombre %}
+  <div class="campo">
+    <label for="{{ id_campo }}">
+      {{ etiqueta }}{% if requerido %}<span class="campo-requerido">*</span>{% endif %}
+    </label>
+    <input
+      class="control {{ 'control--compacto' if compacto }} {{ 'control-numero' if tipo == 'number' }}"
+      type="{{ tipo }}"
+      id="{{ id_campo }}"
+      name="{{ nombre }}"
+      value="{{ valor if valor is not none else '' }}"
+      {% if marcador %}placeholder="{{ marcador }}"{% endif %}
+      {% if requerido %}required{% endif %}
+      {% if paso is not none %}step="{{ paso }}"{% endif %}
+      {% if minimo is not none %}min="{{ minimo }}"{% endif %}
+      {% if maximo is not none %}max="{{ maximo }}"{% endif %}
+      {% if autocompletar %}autocomplete="{{ autocompletar }}"{% endif %}
+    />
+    {% if pista %}<p class="campo-pista">{{ pista }}</p>{% endif %}
+  </div>
+{% endmacro %}
+
+
+{% macro seleccion(etiqueta, nombre, opciones, valor='', pista=none, requerido=false,
+                   compacto=false, identificador=none, vacia=none) %}
+  {% set id_campo = identificador or nombre %}
+  <div class="campo">
+    <label for="{{ id_campo }}">
+      {{ etiqueta }}{% if requerido %}<span class="campo-requerido">*</span>{% endif %}
+    </label>
+    <select class="control {{ 'control--compacto' if compacto }}" id="{{ id_campo }}"
+            name="{{ nombre }}" {% if requerido %}required{% endif %}>
+      {% if vacia is not none %}<option value="">{{ vacia }}</option>{% endif %}
+      {% for opcion in opciones %}
+        <option value="{{ opcion[0] }}" {{ 'selected' if opcion[0]|string == valor|string }}>
+          {{ opcion[1] }}
+        </option>
+      {% endfor %}
+    </select>
+    {% if pista %}<p class="campo-pista">{{ pista }}</p>{% endif %}
+  </div>
+{% endmacro %}
+
+
+{% macro area(etiqueta, nombre, valor='', requerido=false, pista=none, marcador='',
+              identificador=none) %}
+  {% set id_campo = identificador or nombre %}
+  <div class="campo">
+    <label for="{{ id_campo }}">
+      {{ etiqueta }}{% if requerido %}<span class="campo-requerido">*</span>{% endif %}
+    </label>
+    <textarea class="control" id="{{ id_campo }}" name="{{ nombre }}"
+      {% if marcador %}placeholder="{{ marcador }}"{% endif %}
+      {% if requerido %}required{% endif %}>{{ valor }}</textarea>
+    {% if pista %}<p class="campo-pista">{{ pista }}</p>{% endif %}
+  </div>
+{% endmacro %}
+
+
+{# Editor de tarifa: heredar, tarifa propia o «sin tarifa asignada». #}
+{% macro editor_tarifa(etiqueta, prefijo, modo, monto, moneda, etiqueta_heredar=none,
+                       compacto=true) %}
+  <div class="campo" data-tarifa="{{ prefijo }}">
+    <span class="campo-etiqueta">{{ etiqueta }}</span>
+    <select class="control {{ 'control--compacto' if compacto }}" name="{{ prefijo }}_modo"
+            aria-label="{{ etiqueta }}: modo" data-modo-tarifa>
+      {% if etiqueta_heredar %}
+        <option value="heredada" {{ 'selected' if modo == 'heredada' }}>{{ etiqueta_heredar }}</option>
+      {% endif %}
+      <option value="propia" {{ 'selected' if modo == 'propia' }}>Tarifa por hora</option>
+      <option value="sin-tarifa" {{ 'selected' if modo == 'sin-tarifa' }}>Sin tarifa asignada</option>
+    </select>
+    <div class="fila-controles" data-valores-tarifa {{ 'hidden' if modo != 'propia' }}>
+      <input class="control control-numero {{ 'control--compacto' if compacto }}"
+             type="number" min="0" step="0.5" name="{{ prefijo }}_monto"
+             aria-label="{{ etiqueta }}: valor" value="{{ valor_entrada(monto if monto is not none else 0) }}" />
+      <select class="control {{ 'control--compacto' if compacto }}" name="{{ prefijo }}_moneda"
+              aria-label="{{ etiqueta }}: moneda" style="width:8rem">
+        {% for divisa in MONEDAS %}
+          <option value="{{ divisa.value }}" {{ 'selected' if divisa.value == (moneda or 'CRC') }}>
+            {{ divisa.value }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+{% endmacro %}
+
+
+{% macro diferencia(valor) %}
+  <span class="{{ 'positivo' if valor > 0 else ('negativo' if valor < 0 else 'neutro') }} tabulares">
+    {{ '+' if valor > 0 }}{{ formatear_numero(valor) }} h
+  </span>
+{% endmacro %}

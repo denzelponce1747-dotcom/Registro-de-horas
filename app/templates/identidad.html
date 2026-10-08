@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block titulo %}Identidad · MAJERIE S.R.L{% endblock %}
+
+{% block cuerpo %}
+  <div class="pantalla-centro superficie">
+    <div class="halos" aria-hidden="true">
+      <span class="halo-acento deriva"></span>
+    </div>
+
+    <main class="panel-centro panel-centro--ancho">
+      <div class="panel-tarjeta surge">
+        <div class="panel-centrado">
+          {{ logo('16px') }}
+          <p class="panel-subtitulo">Administración</p>
+          <h1 class="panel-titulo">¿Quién está usando el sistema?</h1>
+          <p class="panel-texto" style="max-width:24rem">
+            La cuenta de administración es compartida. El nombre que elija quedará
+            registrado en cada aprobación y en el historial.
+          </p>
+        </div>
+
+        <div class="opciones-identidad escalonado">
+          {% for identidad in IDENTIDADES %}
+            <form method="post" data-local>
+              <input type="hidden" name="identidad" value="{{ identidad }}" />
+              <button type="submit" class="opcion-identidad">
+                <span class="avatar">{{ iniciales_identidad(identidad) }}</span>
+                <span class="opcion-identidad-texto">
+                  <b>{{ identidad }}</b>
+                  <span>Perfil Administrador</span>
+                </span>
+                <span class="opcion-flecha">{{ icono('flecha-derecha', '16px') }}</span>
+              </button>
+            </form>
+          {% endfor %}
+        </div>
+
+        {% if error %}
+          <p role="alert" class="aviso-error" style="margin-top:16px">{{ error }}</p>
+        {% endif %}
+
+        <form method="post" action="{{ url_for('sesion.salir') }}" data-local>
+          <button type="submit" class="enlace-discreto">Salir y usar otra cuenta</button>
+        </form>
+      </div>
+    </main>
+  </div>
+{% endblock %}

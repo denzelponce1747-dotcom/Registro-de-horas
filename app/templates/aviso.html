@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block titulo %}{{ titulo }} · MAJERIE S.R.L{% endblock %}
+
+{# Pantalla a página completa para avisos fuera del flujo normal: un error o
+   una dirección que no existe. Mantiene el mismo lenguaje visual que el
+   ingreso para que nunca se vea una pantalla «desnuda» del navegador. #}
+{% block cuerpo %}
+  <div class="pantalla-centro superficie">
+    <div class="halos" aria-hidden="true">
+      <span class="halo-acento deriva"></span>
+    </div>
+
+    <main class="panel-centro">
+      <div class="panel-tarjeta surge" style="text-align:center">
+        <div class="panel-centrado">
+          {{ logo('16px') }}
+          <span class="vacio-icono {{ 'vacio-icono--alerta' if tono == 'alerta' }}" style="margin-top:28px">
+            {{ icono(nombre_icono or 'aviso', '20px', 1.7) }}
+          </span>
+          <h1 class="panel-titulo" style="margin-top:16px">{{ titulo }}</h1>
+          {% if descripcion %}<p class="panel-texto">{{ descripcion }}</p>{% endif %}
+        </div>
+
+        <div style="margin-top:28px;display:flex;gap:8px;justify-content:center">
+          <a class="boton boton--primario" href="{{ destino or url_for('sesion.raiz') }}">
+            {{ etiqueta_destino or 'Volver al inicio' }}
+          </a>
+        </div>
+      </div>
+    </main>
+  </div>
+{% endblock %}

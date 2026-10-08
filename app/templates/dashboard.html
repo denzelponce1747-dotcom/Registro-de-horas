@@ -1,0 +1,396 @@
+{% extends "armazon.html" %}
+{% from "piezas.html" import encabezado, indicador, insignia_estado, vacio, diferencia %}
+{% block titulo %}Dashboard de horas · MAJERIE S.R.L{% endblock %}
+
+{% block pantalla %}
+  <div class="pila">
+    {{ encabezado(
+        'Administrador',
+        'Dashboard de horas',
+        'Vista consolidada del equipo: horas trabajadas frente a las horas deber, '
+        ~ 'horas acumuladas, vacaciones y monto facturable por moneda.',
+        'Hoy es ' ~ formatear_fecha_larga(hoy_iso())) }}
+
+    <div class="rejilla-indicadores escalonado">
+      {{ indicador('personas', 'Colaboradores', activos|length,
+                   resumen.collaborators ~ ' con registros'
+                   ~ ((' · ' ~ (colaboradores|length - activos|length) ~ ' inactivos')
+                      if colaboradores|length > activos|length else '')) }}
+      {{ indicador('portapapeles-lista', 'Total de registros', resumen.totalEntries,
+                   'Promedio de ' ~ formatear_numero(resumen.averageHours) ~ ' h por registro') }}
+      {{ indicador('reloj', 'Horas trabajadas', formatear_horas(trabajadas),
+                   'En el periodo de cada persona, sin el almuerzo', 'acento') }}
+      {{ indicador('diana', 'Horas deber', formatear_horas(deber),
+                   'Según la jornada configurada de cada colaborador') }}
+      {{ indicador('reloj-arena', 'Horas acumuladas',
+                   ('+' if acumuladas > 0 else '') ~ formatear_horas(acumuladas),
+                   'Saldo del equipo, usable en permisos remunerados') }}
+      {{ indicador('palmera', 'Vacaciones disponibles',
+                   formatear_numero(vacaciones_libres, 1) ~ ' días',
+                   'Suma de los saldos vigentes del equipo') }}
+      {{ indicador('escudo-alerta', 'Pendientes de aprobación', pendientes,
+                   (resumen.pendingEntries ~ ' de horas · ' ~ ausencias_pendientes ~ ' de ausencias')
+                   if pendientes else 'Todo al día',
+                   'pendiente' if pendientes else '') }}
+
+      {# Los montos no se suman entre monedas: cada una se muestra por separado. #}
+      <article class="tarjeta indicador">
+        <div class="indicador-cabecera">
+          <p class="indicador-titulo">Monto facturable</p>
+          <span class="indicador-icono">{{ icono('billete', '18px', 1.7) }}</span>
+        </div>
+        {% set montos = facturacion.amounts.items() | rejectattr('1', 'equalto', 0) | list %}
+        {% if not montos %}
+          <p class="indicador-valor indicador-valor--apagado">Sin tarifa</p>
+        {% else %}
+          <ul class="indicador-montos">
+            {% for moneda, monto in montos %}
+              <li><b>{{ formatear_monto(monto) }}</b><span>{{ moneda }}</span></li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+        <p class="indicador-pista">
+          {% if facturacion.hoursWithoutRate > 0 %}
+            {{ formatear_horas(facturacion.hoursWithoutRate) }} registradas sin tarifa asignada
+          {% else %}
+            Todas las horas tienen tarifa asignada
+          {% endif %}
+        </p>
+      </article>
+    </div>
+
+    {# ─────────────────────────────────────────── Periodo del reporte #}
+    <section class="tarjeta tarjeta--acolchada surge" style="animation-delay:140ms">
+      <div class="fila fila--separada fila--fin">
+        <div>
+          <h2 style="font-size:15px;font-weight:600;letter-spacing:-.01em;color:var(--tinta)">
+            Periodo del reporte
+          </h2>
+          <p class="texto-pequeno texto-tenue" style="max-width:42rem;margin-top:4px;line-height:1.6">
+            Elija «Todo el equipo» para el periodo general, o un colaborador para
+            generar su reporte con el periodo individual configurado en su ficha.
+            Con «Desde» y «Hasta» puede pedir cualquier rango —una quincena, un
+            mes, una semana— sin cambiar el periodo guardado de nadie.
+          </p>
+          <p class="texto-pequeno tabulares" style="margin-top:8px;font-weight:500;color:var(--texto)">
+            {{ formatear_rango(periodo_reporte.firstWorkday, periodo_reporte.lastWorkday) }}
+            <span class="texto-tenue" style="font-weight:400;margin-left:8px">
+              · {{ registros_reporte|length }}
+              {{ 'registro' if registros_reporte|length == 1 else 'registros' }}
+              {% if periodo_desde or periodo_hasta %}
+                · <span class="acento">rango a medida</span>
+              {% endif %}
+            </span>
+          </p>
+        </div>
+
+        <form method="get" class="fila fila--fin" style="gap:12px" id="formulario-reporte">
+          {{ campos_ocultos_filtros() }}
+          <div class="campo" style="width:14rem">
+            <label for="reporte_de">Reporte de</label>
+            <select class="control" id="reporte_de" name="reporte_de">
+              <option value="">Todo el equipo</option>
+              {% for persona in colaboradores %}
+                <option value="{{ persona.id }}" {{ 'selected' if reporte_usuario == persona.id }}>
+                  {{ persona.name }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          {# Un rango libre para sacar el reporte de una quincena, un mes o una
+             semana, sin tocar el periodo guardado de nadie. #}
+          <div class="campo" style="width:10rem">
+            <label for="periodo_desde">Desde</label>
+            <input class="control" type="date" id="periodo_desde" name="periodo_desde"
+                   value="{{ periodo_desde }}" />
+          </div>
+          <div class="campo" style="width:10rem">
+            <label for="periodo_hasta">Hasta</label>
+            <input class="control" type="date" id="periodo_hasta" name="periodo_hasta"
+                   value="{{ periodo_hasta }}" />
+          </div>
+          <button class="boton boton--secundario" type="submit" style="margin-bottom:1px">
+            Aplicar
+          </button>
+        </form>
+      </div>
+
+      <div class="fila" style="margin-top:16px;gap:8px">
+        <a class="boton boton--primario"
+           href="{{ url_for('panel.descargar_reporte', tipo='general', **argumentos) }}">
+          {{ icono('descargar', '16px') }} Reporte general
+        </a>
+        <a class="boton boton--secundario"
+           href="{{ url_for('panel.descargar_reporte', tipo='por-colaborador', **argumentos) }}">
+          {{ icono('hoja-calculo', '16px') }} Reporte por colaborador
+        </a>
+      </div>
+    </section>
+
+    {# ─────────────────────────────────────────── Gráficos #}
+    <div class="surge" style="animation-delay:200ms;display:grid;gap:16px;grid-template-columns:1fr">
+      <section class="tarjeta tarjeta--recorta">
+        <div class="tarjeta-encabezado">
+          <div>
+            <h2>Horas por colaborador</h2>
+            <p>Horas aprobadas y pendientes de aprobación acumuladas por persona.</p>
+          </div>
+          <div class="tarjeta-encabezado-acciones">{{ leyenda_estado }}</div>
+        </div>
+        <div class="tarjeta-cuerpo">{{ grafico_colaboradores }}</div>
+      </section>
+
+      <section class="tarjeta tarjeta--recorta">
+        <div class="tarjeta-encabezado">
+          <div>
+            <h2>Estado de los registros</h2>
+            <p>Participación de las horas aprobadas y las que esperan aprobación.</p>
+          </div>
+        </div>
+        <div class="tarjeta-cuerpo" style="max-width:20rem;margin:0 auto">{{ grafico_estado }}</div>
+      </section>
+
+      <section class="tarjeta tarjeta--recorta">
+        <div class="tarjeta-encabezado">
+          <div>
+            <h2>Horas por proyecto</h2>
+            <p>Distribución del tiempo registrado entre proyectos y tareas.</p>
+          </div>
+        </div>
+        <div class="tarjeta-cuerpo">{{ grafico_proyectos }}</div>
+      </section>
+    </div>
+
+    {# ─────────────────────────────────────────── Saldo por colaborador #}
+    <section class="tarjeta tarjeta--recorta surge" style="animation-delay:260ms">
+      <div class="tarjeta-encabezado">
+        <div>
+          <h2>Horas acumuladas y vacaciones</h2>
+          <p>Horas trabajadas frente a las horas deber de cada colaborador, dentro
+             de su periodo. En total, {{ formatear_horas(trabajadas) }} trabajadas sobre
+             {{ formatear_horas(deber) }} deber.</p>
+        </div>
+      </div>
+
+      {% if not saldos %}
+        {{ vacio('personas', 'Sin colaboradores',
+                 'Cree las cuentas del equipo desde Configuración para ver sus saldos.') }}
+      {% else %}
+        <ul class="lista-dividida escalonado">
+          {% for item in saldos %}
+            <li>
+              <div class="fila fila--separada" style="align-items:baseline">
+                <p class="texto-fuerte" style="font-size:14px">
+                  {{ item.name }}
+                  <span class="texto-menudo texto-apagado" style="margin-left:8px;font-weight:400">
+                    {{ item.entries }} {{ 'registro' if item.entries == 1 else 'registros' }}
+                  </span>
+                </p>
+                {% if item.pendingEntries + item.pendingAbsences > 0 %}
+                  <p class="texto-menudo texto-pendiente" style="font-weight:500">
+                    Por aprobar:
+                    {%- if item.pendingEntries %} {{ item.pendingEntries }}
+                      {{ 'registro de horas' if item.pendingEntries == 1 else 'registros de horas' }}
+                    {%- endif %}
+                    {%- if item.pendingEntries and item.pendingAbsences %} y{% endif %}
+                    {%- if item.pendingAbsences %} {{ item.pendingAbsences }}
+                      {{ 'ausencia' if item.pendingAbsences == 1 else 'ausencias' }}
+                    {%- endif %}
+                  </p>
+                {% endif %}
+              </div>
+
+              <dl class="rejilla" style="margin-top:12px;gap:12px 24px;grid-template-columns:repeat(auto-fit,minmax(9rem,1fr))">
+                <div>
+                  <dt class="indicador-titulo">Trabajadas</dt>
+                  <dd class="texto-fuerte tabulares">{{ formatear_numero(item.worked) }} h</dd>
+                  <p class="texto-menudo texto-apagado">Deber {{ formatear_numero(item.target) }} h</p>
+                </div>
+                <div>
+                  <dt class="indicador-titulo">Diferencia del periodo</dt>
+                  <dd>{{ diferencia(item.difference) }}</dd>
+                </div>
+                <div>
+                  <dt class="indicador-titulo">Horas acumuladas</dt>
+                  <dd>{{ diferencia(item.accumulated) }}</dd>
+                  {% if item.accumulatedSpent > 0 %}
+                    <p class="texto-menudo texto-apagado">
+                      {{ formatear_numero(item.accumulatedSpent) }} h usadas en permisos
+                    </p>
+                  {% endif %}
+                </div>
+                <div>
+                  <dt class="indicador-titulo">Vacaciones disponibles</dt>
+                  <dd class="texto-fuerte tabulares">{{ formatear_numero(item.vacation.available, 1) }} días</dd>
+                  <p class="texto-menudo texto-apagado">
+                    {% if item.vacation.pending > 0 %}
+                      {{ formatear_numero(item.vacation.pending, 1) }} en espera
+                    {% else %}
+                      {{ formatear_numero(item.vacation.taken + item.vacation.scheduled, 1) }} aprobados
+                    {% endif %}
+                  </p>
+                </div>
+                <div>
+                  <dt class="indicador-titulo">Monto facturable</dt>
+                  <dd class="texto-fuerte tabulares">{{ formatear_montos(item.billing.amounts) }}</dd>
+                  {% if item.billing.hoursWithoutRate > 0 %}
+                    <p class="texto-menudo texto-apagado">
+                      {{ formatear_numero(item.billing.hoursWithoutRate) }} h sin tarifa
+                    </p>
+                  {% endif %}
+                </div>
+              </dl>
+            </li>
+          {% endfor %}
+        </ul>
+
+        <div class="pie-tarjeta">
+          <span class="indicador-titulo">Total del equipo</span>
+          <span class="fila tabulares texto-pequeno texto-tenue" style="gap:20px">
+            <span><b class="texto-fuerte">{{ formatear_numero(trabajadas) }} h</b> trabajadas</span>
+            <span>{{ formatear_numero(deber) }} h deber</span>
+            <span>Horas acumuladas: {{ diferencia(acumuladas) }}</span>
+          </span>
+        </div>
+      {% endif %}
+    </section>
+
+    {# ─────────────────────────────────────────── Filtros #}
+    <section class="tarjeta tarjeta--acolchada surge" style="animation-delay:320ms">
+      <form method="get" class="rejilla" style="grid-template-columns:repeat(auto-fit,minmax(11rem,1fr))">
+        {% if reporte_usuario %}
+          <input type="hidden" name="reporte_de" value="{{ reporte_usuario }}" />
+        {% endif %}
+        {% if periodo_desde %}<input type="hidden" name="periodo_desde" value="{{ periodo_desde }}" />{% endif %}
+        {% if periodo_hasta %}<input type="hidden" name="periodo_hasta" value="{{ periodo_hasta }}" />{% endif %}
+        <div class="campo">
+          <label for="userId">Colaborador</label>
+          <select class="control control--compacto" id="userId" name="userId">
+            <option value="">Todos</option>
+            {% for persona in colaboradores %}
+              <option value="{{ persona.id }}" {{ 'selected' if filtros.userId == persona.id }}>
+                {{ persona.name }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="campo">
+          <label for="project">Proyecto</label>
+          <select class="control control--compacto" id="project" name="project">
+            <option value="">Todos</option>
+            {% for proyecto in instantanea.projects %}
+              <option value="{{ proyecto.id }}" {{ 'selected' if filtros.project == proyecto.id }}>
+                {{ proyecto.code }} · {{ proyecto.name }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="campo">
+          <label for="status">Estado</label>
+          <select class="control control--compacto" id="status" name="status">
+            <option value="">Todos</option>
+            <option value="aprobado" {{ 'selected' if filtros.status == 'aprobado' }}>Aprobados</option>
+            <option value="pendiente" {{ 'selected' if filtros.status == 'pendiente' }}>Pendientes de aprobación</option>
+          </select>
+        </div>
+        <div class="campo">
+          <label for="from">Desde</label>
+          <input class="control control--compacto" type="date" id="from" name="from" value="{{ filtros['from'] }}" />
+        </div>
+        <div class="campo">
+          <label for="to">Hasta</label>
+          <input class="control control--compacto" type="date" id="to" name="to" value="{{ filtros.to }}" />
+        </div>
+        <div class="campo">
+          <label for="search">Buscar</label>
+          <input class="control control--compacto" id="search" name="search"
+                 value="{{ filtros.search }}" placeholder="Proyecto u observaciones" />
+        </div>
+        <div class="campo" style="justify-content:flex-end">
+          <span class="campo-etiqueta">&nbsp;</span>
+          <div class="fila" style="gap:8px">
+            <button class="boton boton--primario boton--sm" type="submit">
+              {{ icono('filtro', '14px') }} Filtrar
+            </button>
+            <a class="boton boton--secundario boton--sm" href="{{ url_for('panel.dashboard') }}">Limpiar</a>
+          </div>
+        </div>
+      </form>
+      <p class="texto-menudo texto-apagado" style="margin-top:12px">
+        {{ filtrados|length }} {{ 'registro coincide' if filtrados|length == 1 else 'registros coinciden' }}
+        con los filtros seleccionados.
+      </p>
+    </section>
+
+    {# ─────────────────────────────────────────── Detalle de registros #}
+    <section class="tarjeta tarjeta--recorta surge" style="animation-delay:380ms" id="detalle">
+      <div class="tarjeta-encabezado">
+        <div>
+          <h2>Detalle de registros</h2>
+          <p>
+            {{ filtrados|length }} {{ 'registro' if filtrados|length == 1 else 'registros' }} ·
+            {{ formatear_horas(filtrados | sum(attribute='hours') | round(2)) }}
+          </p>
+        </div>
+      </div>
+
+      {% if not visibles %}
+        {{ vacio('busqueda-vacia', 'Sin resultados',
+                 'Ningún registro coincide con los filtros seleccionados. Ajuste los criterios para ver más información.') }}
+      {% else %}
+        <ul class="lista-dividida">
+          {% for item in visibles %}
+            {% set detalle = detalle_registro(item) %}
+            <li>
+              <div class="fila" style="gap:12px;align-items:baseline">
+                <span class="fila texto-pequeno texto-fuerte" style="gap:8px">
+                  <span class="sello-tinta">{{ iniciales_de(detalle.colaborador) }}</span>
+                  {{ detalle.colaborador }}
+                </span>
+                <span class="texto-pequeno texto-tenue tabulares">{{ formatear_fecha(item.date) }}</span>
+                <span class="texto-pequeno texto-tenue tabulares">{{ item.start }} – {{ item.end }}</span>
+                <span class="texto-pequeno texto-tenue tabulares">
+                  Almuerzo {{ formatear_almuerzo_corto(detalle.almuerzo) }}
+                </span>
+                <span class="fila empuja" style="gap:12px;flex-wrap:nowrap">
+                  <b class="texto-pequeno tabulares">{{ formatear_numero(item.hours) }} h</b>
+                  <span class="texto-pequeno texto-tenue tabulares">
+                    {% if detalle.monto %}
+                      {{ formatear_monto(detalle.monto.amount) }} {{ detalle.monto.currency }}
+                    {% else %}Sin tarifa{% endif %}
+                  </span>
+                  {{ insignia_estado(item.pendingAction) }}
+                </span>
+              </div>
+              <p class="texto-pequeno texto-tenue" style="margin-top:6px">
+                <span style="font-weight:500;color:var(--texto)">
+                  {{ detalle.proyecto.code if detalle.proyecto else '—' }} {{ item.projectName }}
+                </span>
+                <span class="separador" aria-hidden="true">·</span>{{ item.notes }}
+                <span class="separador" aria-hidden="true">·</span>
+                <span class="texto-apagado">{{ formatear_tarifa(detalle.tarifa) }}</span>
+              </p>
+            </li>
+          {% endfor %}
+        </ul>
+
+        {% if hay_mas %}
+          <div class="pie-tarjeta" style="justify-content:center">
+            <a class="boton boton--secundario boton--sm"
+               href="{{ url_for('panel.dashboard', pagina=pagina + 1, **argumentos) }}#detalle">
+              Ver más registros
+            </a>
+          </div>
+        {% endif %}
+      {% endif %}
+    </section>
+  </div>
+{% endblock %}
+
+
+{% macro campos_ocultos_filtros() %}
+  {% for clave, valor in filtros.items() %}
+    {% if valor %}<input type="hidden" name="{{ clave }}" value="{{ valor }}" />{% endif %}
+  {% endfor %}
+{% endmacro %}

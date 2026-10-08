@@ -1,0 +1,150 @@
+{% extends "armazon.html" %}
+{% from "piezas.html" import encabezado, vacio %}
+{% block titulo %}Mis proyectos · MAJERIE S.R.L{% endblock %}
+
+{% block pantalla %}
+  <div class="pila">
+    {% call encabezado(
+        'Colaborador',
+        'Mis proyectos',
+        'Cree y mantenga sus propios proyectos para registrar horas contra ellos. '
+        ~ 'Los proyectos de la empresa y las tarifas los administra el perfil Administrador.') %}
+      {% if not creando %}
+        <a class="boton boton--primario" href="{{ url_for('registro.proyectos', nuevo=1) }}">
+          {{ icono('mas', '16px', 2) }} Nuevo proyecto
+        </a>
+      {% endif %}
+    {% endcall %}
+
+    {% if creando %}
+      <section class="tarjeta tarjeta--recorta surge">
+        <div class="tarjeta-encabezado">
+          <div>
+            <h2>Nuevo proyecto</h2>
+            <p>El proyecto quedará a su nombre. La tarifa la define la administración.</p>
+          </div>
+          <div class="tarjeta-encabezado-acciones">
+            <a class="boton boton--fantasma boton--sm" href="{{ url_for('registro.proyectos') }}">
+              {{ icono('cerrar', '14px', 2) }} Cancelar
+            </a>
+          </div>
+        </div>
+        <form method="post" class="tarjeta-cuerpo">
+          <input type="hidden" name="accion" value="crear" />
+          <div class="rejilla rejilla--3">
+            <div class="campo">
+              <label for="code">Código<span class="campo-requerido">*</span></label>
+              <input class="control" id="code" name="code" placeholder="2495" required />
+            </div>
+            <div class="campo">
+              <label for="name">Proyecto<span class="campo-requerido">*</span></label>
+              <input class="control" id="name" name="name" placeholder="Nombre del proyecto" required />
+            </div>
+            <div class="campo">
+              <label for="leader">Líder de proyecto</label>
+              <input class="control" id="leader" name="leader" placeholder="Responsable" />
+            </div>
+          </div>
+          <div class="fila" style="margin-top:20px">
+            <button class="boton boton--primario" type="submit">
+              {{ icono('visto', '16px') }} Crear el proyecto
+            </button>
+          </div>
+        </form>
+      </section>
+    {% endif %}
+
+    <section class="tarjeta tarjeta--recorta surge" style="animation-delay:70ms">
+      <div class="tarjeta-encabezado">
+        <div>
+          <h2>Proyectos</h2>
+          <p>{{ proyectos|length }}
+             {{ 'proyecto visible' if proyectos|length == 1 else 'proyectos visibles' }} ·
+             los suyos puede editarlos; los de la empresa se muestran solo para consultarlos.</p>
+        </div>
+      </div>
+
+      {% if not proyectos %}
+        {{ vacio('carpetas', 'Sin proyectos',
+                 'Cree el primer proyecto para poder registrar horas contra él.') }}
+      {% else %}
+        <ul class="lista-dividida">
+          {% for proyecto in proyectos %}
+            <li>
+              {% if editando == proyecto.id %}
+                <form method="post">
+                  <input type="hidden" name="accion" value="editar" />
+                  <input type="hidden" name="id" value="{{ proyecto.id }}" />
+                  <div class="rejilla rejilla--3">
+                    <div class="campo">
+                      <label for="code-{{ proyecto.id }}">Código</label>
+                      <input class="control control--compacto" id="code-{{ proyecto.id }}"
+                             name="code" value="{{ proyecto.code }}" />
+                    </div>
+                    <div class="campo">
+                      <label for="name-{{ proyecto.id }}">Proyecto</label>
+                      <input class="control control--compacto" id="name-{{ proyecto.id }}"
+                             name="name" value="{{ proyecto.name }}" />
+                    </div>
+                    <div class="campo">
+                      <label for="leader-{{ proyecto.id }}">Líder de proyecto</label>
+                      <input class="control control--compacto" id="leader-{{ proyecto.id }}"
+                             name="leader" value="{{ proyecto.leader }}" />
+                    </div>
+                  </div>
+                  <div class="fila" style="margin-top:14px;gap:8px">
+                    <label class="fila texto-pequeno" style="gap:6px">
+                      <input type="checkbox" name="active" value="1" {{ 'checked' if proyecto.active }} />
+                      Activo
+                    </label>
+                    <button class="boton boton--primario boton--sm" type="submit">Guardar</button>
+                    <a class="boton boton--fantasma boton--sm" href="{{ url_for('registro.proyectos') }}">Cancelar</a>
+                  </div>
+                </form>
+              {% else %}
+                <div class="fila fila--separada" style="align-items:flex-start">
+                  <div style="min-width:0;flex:1">
+                    <p class="texto-pequeno texto-fuerte">
+                      <span class="tabulares">{{ proyecto.code }}</span>
+                      <span class="separador" aria-hidden="true">·</span>{{ proyecto.name }}
+                      {% if not proyecto.active %}
+                        <span class="insignia insignia--neutra" style="margin-left:8px">Inactivo</span>
+                      {% endif %}
+                    </p>
+                    <p class="texto-menudo texto-tenue" style="margin-top:4px">
+                      {{ ('Líder: ' ~ proyecto.leader) if proyecto.leader else 'Sin líder asignado' }}
+                      <span class="separador" aria-hidden="true">·</span>
+                      {{ 'Proyecto propio' if proyecto.ownerId else 'Proyecto de la empresa' }}
+                      <span class="separador" aria-hidden="true">·</span>
+                      {{ formatear_numero(horas_por_proyecto.get(proyecto.id, 0)) }} h registradas por usted
+                    </p>
+                  </div>
+
+                  {% if proyecto.id in editables %}
+                    <div class="fila" style="gap:8px;flex-wrap:nowrap">
+                      <a class="boton-icono" aria-label="Editar proyecto"
+                         href="{{ url_for('registro.proyectos', editar=proyecto.id) }}">
+                        {{ icono('lapiz', '14px') }}
+                      </a>
+                      <form method="post">
+                        <input type="hidden" name="accion" value="eliminar" />
+                        <input type="hidden" name="id" value="{{ proyecto.id }}" />
+                        <button class="boton-icono boton-icono--peligro" type="submit"
+                                aria-label="Eliminar proyecto"
+                                data-confirmar="¿Eliminar el proyecto «{{ proyecto.name }}»? Los registros ya hechos conservan su nombre.">
+                          {{ icono('papelera', '14px') }}
+                        </button>
+                      </form>
+                    </div>
+                  {% else %}
+                    <span class="insignia insignia--neutra">Solo lectura</span>
+                  {% endif %}
+                </div>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </section>
+  </div>
+{% endblock %}

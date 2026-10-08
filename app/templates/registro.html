@@ -1,0 +1,466 @@
+{% extends "armazon.html" %}
+{% from "piezas.html" import encabezado, indicador, insignia_estado, insignia_tipo, vacio %}
+{% block titulo %}Mis horas · MAJERIE S.R.L{% endblock %}
+
+{% block pantalla %}
+  <div class="pila">
+    {{ encabezado(
+        'Colaborador',
+        'Hola, ' ~ usuario.name,
+        'Su jornada es de ' ~ formatear_numero(config.dailyTargetHours) ~ ' h diarias. '
+        ~ 'Registre sus actividades por día; el almuerzo se indica una sola vez por jornada.') }}
+
+    <div class="rejilla-indicadores surge" style="animation-delay:70ms">
+      {{ indicador('calendario-dias', 'Registros', resumen.totalEntries,
+                   formatear_horas(resumen.totalHours) ~ ' registradas en total') }}
+      {{ indicador('reloj-arena', 'Horas acumuladas',
+                   ('+' if acumuladas > 0 else '') ~ formatear_horas(acumuladas),
+                   'Frente a ' ~ formatear_horas(deber) ~ ' de horas deber', 'acento') }}
+      {{ indicador('palmera', 'Vacaciones disponibles',
+                   formatear_numero(vacaciones.available, 1) ~ ' días',
+                   vacaciones.annual|int ~ ' de base anual + '
+                   ~ formatear_numero(vacaciones.carried, 1) ~ ' del año anterior') }}
+      {{ indicador('escudo-alerta', 'Pendientes de aprobación', pendientes,
+                   (resumen.pendingEntries ~ ' de horas · ' ~ totales.pendingRequests ~ ' de ausencias')
+                   if pendientes else 'Todo al día',
+                   'pendiente' if pendientes else '') }}
+    </div>
+
+    <div class="surge" style="animation-delay:140ms">
+      <div class="pestanas" role="tablist" aria-label="Vista de los registros">
+        {% for clave, texto_pestana, nombre_icono in [
+            ('dia', 'Día', 'calendario-dias'),
+            ('semana', 'Semana', 'calendario-rango'),
+            ('historial', 'Historial', 'historial')] %}
+          <a class="pestana" role="tab" aria-selected="{{ 'true' if vista == clave else 'false' }}"
+             href="{{ url_for('registro.registro', vista=clave, fecha=fecha) }}">
+            {{ icono(nombre_icono, '14px', 1.9) }}{{ texto_pestana }}
+          </a>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="surge" style="animation-delay:190ms">
+      {% if vista == 'dia' %}{{ vista_dia() }}
+      {% elif vista == 'semana' %}{{ vista_semana() }}
+      {% else %}{{ vista_historial() }}{% endif %}
+    </div>
+  </div>
+{% endblock %}
+
+
+{# ─────────────────────────────────────────────────────────────── Vista Día #}
+{% macro vista_dia() %}
+  <div class="pila-media">
+    <section class="tarjeta tarjeta--acolchada">
+      <div class="fila fila--separada">
+        <div class="fila" style="gap:10px">
+          <a class="boton-cuadrado" aria-label="Día anterior"
+             href="{{ url_for('registro.registro', vista='dia', fecha=sumar_dias(fecha, -1)) }}">
+            {{ icono('izquierda', '16px', 1.9) }}
+          </a>
+          <div style="min-width:0">
+            <p class="texto-menudo" style="text-transform:uppercase;letter-spacing:.05em;color:var(--texto-suave);font-weight:500">Jornada</p>
+            <p style="font-size:17px;font-weight:600;letter-spacing:-.02em;color:var(--tinta)">
+              {{ formatear_fecha_larga(fecha) }}
+            </p>
+          </div>
+          <a class="boton-cuadrado" aria-label="Día siguiente"
+             href="{{ url_for('registro.registro', vista='dia', fecha=sumar_dias(fecha, 1)) }}">
+            {{ icono('derecha', '16px', 1.9) }}
+          </a>
+        </div>
+
+        <div class="fila" style="gap:8px">
+          <form method="get" action="{{ url_for('registro.registro') }}" class="fila" style="gap:8px">
+            <input type="hidden" name="vista" value="dia" />
+            <input class="control control--compacto" type="date" name="fecha" value="{{ fecha }}"
+                   style="width:11rem" onchange="this.form.submit()" />
+          </form>
+          <a class="boton boton--secundario boton--sm"
+             href="{{ url_for('registro.registro', vista='dia', fecha=hoy_iso()) }}">Hoy</a>
+          {% if not creando and not editando %}
+            <a class="boton boton--primario boton--sm"
+               href="{{ url_for('registro.registro', vista='dia', fecha=fecha, nueva=1) }}">
+              {{ icono('mas', '14px', 2) }} Nueva actividad
+            </a>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="linea-superior rejilla rejilla--4">
+        <div>
+          <p class="indicador-titulo">Horas del día</p>
+          <p class="texto-fuerte tabulares" style="font-size:20px;margin-top:4px">
+            {{ formatear_numero(horas_netas) }} h
+          </p>
+          <p class="texto-menudo texto-apagado">{{ formatear_numero(horas_brutas) }} h brutas</p>
+        </div>
+        <div>
+          <p class="indicador-titulo">Horas deber</p>
+          <p class="texto-fuerte tabulares" style="font-size:20px;margin-top:4px">
+            {{ formatear_numero(deber_dia) }} h
+          </p>
+          <p class="texto-menudo texto-apagado">
+            {% if feriado %}{{ feriado }}
+            {% elif es_finde %}Fin de semana
+            {% elif ausencias_dia %}Ausencia aprobada
+            {% elif dia_futuro %}Día por venir
+            {% elif fuera_del_periodo %}Fuera de su periodo
+            {% elif not registros_dia %}Día laboral sin registros
+            {% else %}Jornada laboral{% endif %}
+          </p>
+        </div>
+        <div>
+          <p class="indicador-titulo">Diferencia</p>
+          <p style="font-size:20px;margin-top:4px"
+             class="tabulares {{ 'positivo' if diferencia_dia > 0 else ('negativo' if diferencia_dia < 0 else 'neutro') }}">
+            {{ '+' if diferencia_dia > 0 }}{{ formatear_numero(diferencia_dia) }} h
+          </p>
+        </div>
+        <div>
+          <p class="indicador-titulo">Almuerzo de la jornada</p>
+          <form method="post" class="fila" style="gap:6px;margin-top:6px">
+            <input type="hidden" name="accion" value="almuerzo" />
+            <input type="hidden" name="fecha" value="{{ fecha }}" />
+            <input type="hidden" name="vista" value="dia" />
+            <input class="control control--compacto control-numero" type="number" name="minutos"
+                   min="0" max="240" step="5" value="{{ minutos_almuerzo }}" style="width:6rem" />
+            <button class="boton boton--secundario boton--sm" type="submit">Guardar</button>
+          </form>
+          <div class="atajos">
+            {% for atajo in atajos_almuerzo %}
+              <button form="almuerzo-{{ atajo }}" class="atajo" type="submit"
+                      aria-pressed="{{ 'true' if atajo == minutos_almuerzo else 'false' }}">
+                {{ formatear_almuerzo(atajo) }}
+              </button>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      {% for atajo in atajos_almuerzo %}
+        <form id="almuerzo-{{ atajo }}" method="post" class="oculto">
+          <input type="hidden" name="accion" value="almuerzo" />
+          <input type="hidden" name="fecha" value="{{ fecha }}" />
+          <input type="hidden" name="vista" value="dia" />
+          <input type="hidden" name="minutos" value="{{ atajo }}" />
+        </form>
+      {% endfor %}
+
+      {% if feriado or es_finde or ausencias_dia or fuera_del_periodo %}
+        <p class="linea-superior texto-pequeno texto-tenue">
+          {% if feriado %}<span class="insignia insignia--aprobada">{{ feriado }}</span>{% endif %}
+          {% if es_finde %}<span class="insignia insignia--neutra">Fin de semana</span>{% endif %}
+          {% for ausencia in ausencias_dia %}{{ insignia_tipo(ausencia.kind) }}{% endfor %}
+          {% if fuera_del_periodo and not (feriado or es_finde or ausencias_dia) %}
+            <span class="insignia insignia--neutra">Fuera de su periodo</span>
+          {% endif %}
+          Este día no genera horas deber.
+        </p>
+      {% elif not registros_dia and not dia_futuro and deber_dia %}
+        <p class="linea-superior texto-pequeno texto-tenue">
+          <span class="insignia insignia--pendiente"><span class="insignia-punto"></span>Sin anotar</span>
+          Este día laboral ya cuenta {{ formatear_numero(deber_dia) }} h deber en su saldo:
+          registre lo trabajado para que no quede en negativo.
+        </p>
+      {% endif %}
+    </section>
+
+    {% if creando or editando %}
+      {{ formulario_actividad() }}
+    {% endif %}
+
+    <section class="tarjeta tarjeta--recorta">
+      <div class="tarjeta-encabezado">
+        <div>
+          <h2>Actividades de la jornada</h2>
+          <p>
+            {{ registros_dia|length }}
+            {{ 'actividad' if registros_dia|length == 1 else 'actividades' }} ·
+            {{ formatear_numero(horas_netas) }} h netas
+            {% if requiere_aprobacion %}
+              · esta fecha tiene más de {{ VENTANA_APROBACION }} días: los cambios pasan por aprobación
+            {% endif %}
+          </p>
+        </div>
+      </div>
+
+      {% if not registros_dia %}
+        {{ vacio('calendario-dias', 'Sin actividades',
+                 'Agregue la primera actividad de esta jornada con «Nueva actividad».') }}
+      {% else %}
+        <ul class="lista-dividida escalonado">
+          {% for item in registros_dia %}
+            {% set proyecto = proyecto_de(item.projectId) %}
+            <li>
+              <article class="fila fila--separada" style="align-items:flex-start">
+                <div style="min-width:0;flex:1">
+                  <p class="texto-pequeno texto-fuerte">
+                    <span class="tabulares">{{ item.start }} – {{ item.end }}</span>
+                    <span class="separador" aria-hidden="true">·</span>
+                    <span style="font-weight:400;color:var(--texto)">
+                      {{ proyecto.code if proyecto else '—' }} {{ item.projectName }}
+                    </span>
+                  </p>
+                  <p class="texto-pequeno texto-tenue" style="margin-top:2px">{{ item.notes }}</p>
+                  {% if item.status == 'pendiente' %}
+                    <p class="texto-menudo texto-pendiente linea-superior" style="margin-top:10px;padding-top:10px">
+                      {{ insignia_estado(item.pendingAction) }} {{ item.pendingReason }}
+                    </p>
+                  {% endif %}
+                </div>
+
+                <div class="fila" style="gap:8px;flex-wrap:nowrap">
+                  <span style="text-align:right;line-height:1.25">
+                    <b class="tabulares" style="display:block;font-size:15px">{{ formatear_numero(item.hours) }} h</b>
+                    <span class="texto-menudo texto-apagado tabulares">{{ formatear_numero(item.grossHours) }} h brutas</span>
+                  </span>
+                  <a class="boton-icono" aria-label="Editar registro"
+                     href="{{ url_for('registro.registro', vista='dia', fecha=fecha, editar=item.id) }}">
+                    {{ icono('lapiz', '14px') }}
+                  </a>
+                  <form method="post">
+                    <input type="hidden" name="accion" value="eliminar" />
+                    <input type="hidden" name="id" value="{{ item.id }}" />
+                    <input type="hidden" name="fecha" value="{{ fecha }}" />
+                    <input type="hidden" name="vista" value="dia" />
+                    <button class="boton-icono boton-icono--peligro" type="submit"
+                            aria-label="Eliminar registro"
+                            data-confirmar="¿Eliminar esta actividad de la jornada?">
+                      {{ icono('papelera', '14px') }}
+                    </button>
+                  </form>
+                </div>
+              </article>
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </section>
+  </div>
+{% endmacro %}
+
+
+{% macro formulario_actividad() %}
+  {% set actual = (registros_dia | selectattr('id', 'equalto', editando) | list | first) if editando else none %}
+  <section class="tarjeta tarjeta--recorta">
+    <div class="tarjeta-encabezado">
+      <div>
+        <h2>{{ 'Editar registro' if actual else 'Nueva actividad' }}</h2>
+        <p>Las horas se calculan con el inicio y el fin; el almuerzo se descuenta
+           una sola vez por jornada.</p>
+      </div>
+      <div class="tarjeta-encabezado-acciones">
+        <a class="boton boton--fantasma boton--sm"
+           href="{{ url_for('registro.registro', vista='dia', fecha=fecha) }}">
+          {{ icono('cerrar', '14px', 2) }} Cancelar
+        </a>
+      </div>
+    </div>
+
+    <form method="post" class="tarjeta-cuerpo">
+      <input type="hidden" name="accion" value="{{ 'editar' if actual else 'crear' }}" />
+      <input type="hidden" name="vista" value="dia" />
+      {% if actual %}<input type="hidden" name="id" value="{{ actual.id }}" />{% endif %}
+
+      <div class="rejilla rejilla--2">
+        <div class="campo">
+          <label for="date">Fecha<span class="campo-requerido">*</span></label>
+          <input class="control" type="date" id="date" name="date"
+                 value="{{ actual.date if actual else fecha }}" required />
+        </div>
+        <div class="campo">
+          <label for="projectId">Proyecto o tarea<span class="campo-requerido">*</span></label>
+          <select class="control" id="projectId" name="projectId" required>
+            <option value="">Seleccione…</option>
+            {% for proyecto in proyectos %}
+              {% if proyecto.active or (actual and actual.projectId == proyecto.id) %}
+                <option value="{{ proyecto.id }}"
+                        {{ 'selected' if actual and actual.projectId == proyecto.id }}>
+                  {{ proyecto.code }} · {{ proyecto.name }}
+                </option>
+              {% endif %}
+            {% endfor %}
+          </select>
+        </div>
+        <div class="campo">
+          <label for="start">Hora de inicio<span class="campo-requerido">*</span></label>
+          <input class="control tabulares" type="time" id="start" name="start"
+                 value="{{ actual.start if actual else '08:00' }}" required />
+        </div>
+        <div class="campo">
+          <label for="end">Hora de finalización<span class="campo-requerido">*</span></label>
+          <input class="control tabulares" type="time" id="end" name="end"
+                 value="{{ actual.end if actual else '17:00' }}" required />
+        </div>
+      </div>
+
+      <div class="campo" style="margin-top:20px">
+        <label for="notes">Observaciones<span class="campo-requerido">*</span></label>
+        <textarea class="control" id="notes" name="notes" required
+                  placeholder="Describa la actividad realizada.">{{ actual.notes if actual else '' }}</textarea>
+        <p class="campo-pista">Sin observaciones no se puede guardar el registro.</p>
+      </div>
+
+      {% if requiere_aprobacion %}
+        <p class="aviso-alerta" style="margin-top:16px">
+          {{ icono('escudo-alerta', '16px') }}
+          Esta jornada tiene más de {{ VENTANA_APROBACION }} días de antigüedad:
+          el cambio quedará a la espera de la administración.
+        </p>
+      {% endif %}
+
+      <div class="fila" style="margin-top:20px;gap:8px">
+        <button class="boton boton--primario" type="submit">
+          {{ icono('visto', '16px') }} <span>{{ 'Guardar cambios' if actual else 'Guardar actividad' }}</span>
+        </button>
+        <a class="boton boton--fantasma"
+           href="{{ url_for('registro.registro', vista='dia', fecha=fecha) }}">Cancelar</a>
+      </div>
+    </form>
+  </section>
+{% endmacro %}
+
+
+{# ──────────────────────────────────────────────────────────── Vista Semana #}
+{% macro vista_semana() %}
+  <section class="tarjeta tarjeta--recorta">
+    <div class="tarjeta-encabezado">
+      <div>
+        <h2>Semana del {{ formatear_rango(semana_desde, semana_hasta) }}</h2>
+        <p>
+          {{ formatear_numero(horas_semana) }} h trabajadas ·
+          {{ formatear_numero(deber_semana) }} h deber ·
+          diferencia {{ '+' if diferencia_semana > 0 }}{{ formatear_numero(diferencia_semana) }} h
+        </p>
+      </div>
+      <div class="tarjeta-encabezado-acciones">
+        <a class="boton boton--secundario boton--sm"
+           href="{{ url_for('registro.registro', vista='semana', fecha=sumar_dias(semana_desde, -7)) }}">
+          {{ icono('izquierda', '14px') }} Anterior
+        </a>
+        <a class="boton boton--secundario boton--sm"
+           href="{{ url_for('registro.registro', vista='semana', fecha=hoy_iso()) }}">Esta semana</a>
+        <a class="boton boton--secundario boton--sm"
+           href="{{ url_for('registro.registro', vista='semana', fecha=sumar_dias(semana_desde, 7)) }}">
+          Siguiente {{ icono('derecha', '14px') }}
+        </a>
+      </div>
+    </div>
+
+    <ul class="lista-dividida">
+      {% set hoy = hoy_iso() %}
+      {% for fila in filas_semana %}
+        {% set por_venir = fila.date > hoy and not fila.entries %}
+        <li class="{{ 'dia-por-venir' if por_venir }}"
+            style="{{ 'background:var(--superficie-2)' if fila.isWeekend or fila.holiday else '' }}">
+          <div class="fila fila--separada" style="align-items:flex-start">
+            <div style="min-width:0;flex:1">
+              <p class="texto-pequeno texto-fuerte">
+                <a href="{{ url_for('registro.registro', vista='dia', fecha=fila.date) }}"
+                   style="text-decoration:underline;text-underline-offset:4px">
+                  {{ formatear_dia_semana(fila.date) }}
+                </a>
+                {% if fila.holiday %}
+                  <span class="insignia insignia--aprobada" style="margin-left:8px">{{ fila.holiday }}</span>
+                {% endif %}
+                {% if fila.absence %}
+                  <span class="insignia insignia--vacaciones" style="margin-left:8px">{{ fila.absence }}</span>
+                {% endif %}
+              </p>
+              {% if fila.entries %}
+                <ul class="lineas-dia">
+                  {% for registro in fila.entries %}
+                    <li>
+                      <b>{{ codigos_proyecto.get(registro.projectId) or registro.projectName }}</b>
+                      <span class="separador-punto">·</span>
+                      <span class="tabulares">{{ formatear_horas(registro.hours) }}</span>
+                      <span class="separador-punto">·</span>
+                      {{ registro.notes or 'Sin detalle' }}
+                      {% if registro.status == 'pendiente' %}
+                        <span class="insignia insignia--pendiente" style="margin-left:6px"><span class="insignia-punto"></span>Por aprobar</span>
+                      {% endif %}
+                    </li>
+                  {% endfor %}
+                </ul>
+              {% elif por_venir %}
+                <p class="texto-menudo texto-apagado" style="margin-top:4px">Por venir</p>
+              {% elif fila.isWeekend %}
+                <p class="texto-menudo texto-apagado" style="margin-top:4px">Fin de semana</p>
+              {% elif not fila.holiday and not fila.absence %}
+                <p class="texto-menudo texto-apagado" style="margin-top:4px">Sin registros</p>
+              {% endif %}
+            </div>
+
+            <div class="fila tabulares texto-pequeno" style="gap:20px;flex-wrap:nowrap">
+              <span class="{{ 'texto-apagado' if not fila.start }}">
+                {% if fila.start %}{{ fila.start }} – {{ fila.end }}{% else %}—{% endif %}
+              </span>
+              <span class="texto-tenue">Almuerzo {{ formatear_almuerzo_corto(fila.lunchMinutes) }}</span>
+              <b>{{ formatear_numero(fila.hours) }} h</b>
+              <span class="texto-tenue">deber {{ formatear_numero(fila.targetHours) }} h</span>
+              <span class="{{ 'positivo' if fila.difference > 0 else ('negativo' if fila.difference < 0 else 'neutro') }}">
+                {{ '+' if fila.difference > 0 }}{{ formatear_numero(fila.difference) }} h
+              </span>
+            </div>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+{% endmacro %}
+
+
+{# ─────────────────────────────────────────────────────────── Vista Historial #}
+{% macro vista_historial() %}
+  <div class="pila-media">
+    {% if not grupos_historial %}
+      <section class="tarjeta">
+        {{ vacio('historial', 'Sin registros',
+                 'Todavía no ha registrado horas. Empiece por la vista Día.') }}
+      </section>
+    {% else %}
+      {% for grupo in grupos_historial %}
+        <section class="tarjeta tarjeta--recorta">
+          <div class="tarjeta-encabezado">
+            <div>
+              <h2 style="text-transform:capitalize">{{ grupo.etiqueta }}</h2>
+              <p>
+                {{ grupo.registros|length }}
+                {{ 'registro' if grupo.registros|length == 1 else 'registros' }} ·
+                {{ formatear_numero(grupo.horas) }} h
+              </p>
+            </div>
+          </div>
+          <ul class="lista-dividida">
+            {% for item in grupo.registros %}
+              {% set proyecto = proyecto_de(item.projectId) %}
+              <li>
+                <div class="fila fila--separada" style="align-items:baseline">
+                  <a class="texto-pequeno texto-fuerte"
+                     style="text-decoration:underline;text-underline-offset:4px"
+                     href="{{ url_for('registro.registro', vista='dia', fecha=item.date) }}">
+                    {{ formatear_fecha(item.date) }}
+                  </a>
+                  <div class="fila tabulares texto-pequeno texto-tenue" style="gap:16px">
+                    <span>{{ item.start }} – {{ item.end }}</span>
+                    <span>Almuerzo {{ formatear_almuerzo_corto(almuerzos.get(usuario.id ~ '|' ~ item.date, 0)) }}</span>
+                    <b class="texto-fuerte">{{ formatear_numero(item.hours) }} h</b>
+                    {{ insignia_estado(item.pendingAction) }}
+                  </div>
+                </div>
+                <p class="texto-pequeno texto-tenue" style="margin-top:6px">
+                  <span style="font-weight:500;color:var(--texto)">
+                    {{ proyecto.code if proyecto else '—' }} {{ item.projectName }}
+                  </span>
+                  <span class="separador" aria-hidden="true">·</span>{{ item.notes }}
+                </p>
+              </li>
+            {% endfor %}
+          </ul>
+        </section>
+      {% endfor %}
+    {% endif %}
+  </div>
+{% endmacro %}

@@ -1,0 +1,628 @@
+{% extends "armazon.html" %}
+{% from "piezas.html" import encabezado, editor_tarifa, vacio %}
+{% block titulo %}Configuración · MAJERIE S.R.L{% endblock %}
+
+{% block pantalla %}
+  <div class="pila">
+    {{ encabezado(
+        'Administrador',
+        'Configuración',
+        'Administre las cuentas del equipo y sus credenciales, la jornada, el saldo '
+        ~ 'de vacaciones y el periodo individual de cada reporte, además del '
+        ~ 'tarifario por hora de los proyectos.') }}
+
+    <div class="surge" style="animation-delay:70ms">
+      <div class="pestanas" role="tablist" aria-label="Secciones de configuración">
+        {% for clave, texto_pestana, nombre_icono in [
+            ('equipo', 'Colaboradores', 'personas'),
+            ('proyectos', 'Tarifario de proyectos', 'carpetas'),
+            ('historial', 'Historial de cambios', 'lista'),
+            ('seguridad', 'Seguridad', 'escudo-visto')] %}
+          <a class="pestana" role="tab" aria-selected="{{ 'true' if vista == clave else 'false' }}"
+             href="{{ url_for('panel.configuracion', vista=clave) }}">
+            {{ icono(nombre_icono, '14px', 1.9) }}{{ texto_pestana }}
+          </a>
+        {% endfor %}
+      </div>
+    </div>
+
+    {% if vista == 'proyectos' %}{{ seccion_proyectos() }}
+    {% elif vista == 'historial' %}{{ seccion_historial() }}
+    {% elif vista == 'seguridad' %}{{ seccion_seguridad() }}
+    {% else %}{{ seccion_equipo() }}{% endif %}
+  </div>
+{% endblock %}
+
+
+{# ────────────────────────────────────────────────────────── Colaboradores #}
+{% macro seccion_equipo() %}
+  <div class="pila-media surge" style="animation-delay:140ms">
+    <section class="tarjeta tarjeta--acolchada">
+      <h2 style="font-size:15px;font-weight:600;letter-spacing:-.01em;color:var(--tinta)">
+        Periodo del reporte por omisión
+      </h2>
+      <p class="texto-pequeno texto-tenue" style="margin-top:4px;line-height:1.6">
+        Es el que hereda un colaborador nuevo. Cada persona tiene además su propio
+        periodo, que se ajusta en su ficha y encabeza su reporte.
+      </p>
+      <form method="post" class="rejilla rejilla--2" style="margin-top:20px;max-width:28rem">
+        <input type="hidden" name="accion" value="periodo" />
+        <input type="hidden" name="vista" value="equipo" />
+        <div class="campo">
+          <label for="firstWorkday">Primer día laboral</label>
+          <input class="control" type="date" id="firstWorkday" name="firstWorkday"
+                 value="{{ periodo.firstWorkday }}" max="{{ periodo.lastWorkday }}" />
+        </div>
+        <div class="campo">
+          <label for="lastWorkday">Último día laboral</label>
+          <input class="control" type="date" id="lastWorkday" name="lastWorkday"
+                 value="{{ periodo.lastWorkday }}" min="{{ periodo.firstWorkday }}" />
+        </div>
+        <div class="campo" style="grid-column:1/-1">
+          <button class="boton boton--primario" type="submit" style="align-self:flex-start">
+            {{ icono('visto', '16px') }} Guardar el periodo
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <section class="tarjeta tarjeta--recorta">
+      <div class="tarjeta-encabezado">
+        <div>
+          <h2>Colaboradores</h2>
+          <p>Base anual de {{ vacaciones_anuales }} días de vacaciones, con acumulación
+             del saldo no utilizado del año anterior. Cada persona ingresa con su
+             propio usuario y contraseña.</p>
+        </div>
+        <div class="tarjeta-encabezado-acciones">
+          {% if creando != 'colaborador' %}
+            <a class="boton boton--primario boton--sm"
+               href="{{ url_for('panel.configuracion', vista='equipo', nuevo='colaborador') }}">
+              {{ icono('mas', '14px', 2) }} Agregar colaborador
+            </a>
+          {% endif %}
+        </div>
+      </div>
+
+      {% if creando == 'colaborador' %}
+        <form method="post" class="tarjeta-cuerpo" style="background:var(--superficie-2)">
+          <input type="hidden" name="accion" value="crear-colaborador" />
+          <input type="hidden" name="vista" value="equipo" />
+          <div class="rejilla rejilla--2">
+            <div class="campo">
+              <label for="name">Nombre<span class="campo-requerido">*</span></label>
+              <input class="control" id="name" name="name" placeholder="Nombre y apellidos"
+                     required autocomplete="off" />
+            </div>
+            <div class="campo">
+              <label for="username">Usuario<span class="campo-requerido">*</span></label>
+              <input class="control" id="username" name="username" placeholder="mquesada"
+                     autocapitalize="none" spellcheck="false" autocomplete="off" />
+              <p class="campo-pista">Con este nombre inicia sesión. Si lo deja vacío se
+                 propone a partir del nombre.</p>
+            </div>
+            <div class="campo">
+              <label for="password">Contraseña inicial<span class="campo-requerido">*</span></label>
+              <input class="control" id="password" name="password" value="{{ contrasena_sugerida }}"
+                     required autocomplete="off" />
+              <p class="campo-pista">Se muestra una sola vez; entréguesela en persona.</p>
+            </div>
+            <div class="campo">
+              <label for="email">Correo</label>
+              <input class="control" id="email" name="email" type="email"
+                     placeholder="persona@majerie.cr" autocomplete="off" />
+            </div>
+          </div>
+          <div class="fila" style="margin-top:20px;gap:8px">
+            <button class="boton boton--primario" type="submit">
+              {{ icono('visto', '16px') }} Crear la cuenta
+            </button>
+            <a class="boton boton--fantasma"
+               href="{{ url_for('panel.configuracion', vista='equipo') }}">Cancelar</a>
+          </div>
+        </form>
+      {% endif %}
+
+      {% if not fichas %}
+        {{ vacio('personas', 'Sin colaboradores',
+                 'Agregue la primera cuenta para que el equipo pueda registrar sus horas.') }}
+      {% else %}
+        <ul class="lista-dividida">
+          {% for ficha in fichas %}
+            {{ ficha_colaborador(ficha) }}
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </section>
+  </div>
+{% endmacro %}
+
+
+{% macro ficha_colaborador(ficha) %}
+  {% set persona = ficha.usuario %}
+  <li>
+    <div class="fila fila--separada" style="align-items:flex-start">
+      <div style="min-width:0;flex:1">
+        <p class="texto-fuerte" style="font-size:14px">
+          {{ persona.name }}
+          {% if not persona.active %}
+            <span class="insignia insignia--neutra" style="margin-left:8px">Inactivo</span>
+          {% endif %}
+        </p>
+        <p class="texto-menudo texto-tenue" style="margin-top:2px">
+          Usuario «{{ persona.username }}»
+          {% if persona.email %}<span class="separador" aria-hidden="true">·</span>{{ persona.email }}{% endif %}
+          <span class="separador" aria-hidden="true">·</span>
+          {{ ficha.registros }} {{ 'registro' if ficha.registros == 1 else 'registros' }}
+        </p>
+      </div>
+
+      <div class="fila" style="gap:8px;flex-wrap:nowrap">
+        <a class="boton boton--secundario boton--sm"
+           href="{{ url_for('panel.configuracion', vista='equipo', editar=persona.id) }}">
+          {{ icono('lapiz', '14px') }} Editar ficha
+        </a>
+        <form method="post">
+          <input type="hidden" name="accion" value="eliminar-colaborador" />
+          <input type="hidden" name="id" value="{{ persona.id }}" />
+          <input type="hidden" name="vista" value="equipo" />
+          <button class="boton-icono boton-icono--peligro" type="submit"
+                  aria-label="Eliminar colaborador"
+                  data-confirmar="¿Eliminar a {{ persona.name }}? Se borran también sus registros, ausencias y proyectos propios.">
+            {{ icono('papelera', '14px') }}
+          </button>
+        </form>
+      </div>
+    </div>
+
+    {% if editando == persona.id %}
+      <form method="post" class="linea-superior">
+        <input type="hidden" name="accion" value="editar-colaborador" />
+        <input type="hidden" name="id" value="{{ persona.id }}" />
+        <input type="hidden" name="vista" value="equipo" />
+        <div class="rejilla rejilla--3">
+          <div class="campo">
+            <label for="nombre-{{ persona.id }}">Nombre</label>
+            <input class="control control--compacto" id="nombre-{{ persona.id }}"
+                   name="name" value="{{ persona.name }}" />
+          </div>
+          <div class="campo">
+            <label for="usuario-{{ persona.id }}">Usuario</label>
+            <input class="control control--compacto" id="usuario-{{ persona.id }}"
+                   name="username" value="{{ persona.username }}" autocapitalize="none" />
+          </div>
+          <div class="campo">
+            <label for="correo-{{ persona.id }}">Correo</label>
+            <input class="control control--compacto" id="correo-{{ persona.id }}"
+                   name="email" type="email" value="{{ persona.email }}" />
+          </div>
+        </div>
+        <div class="fila" style="margin-top:14px;gap:12px">
+          <label class="fila texto-pequeno" style="gap:6px">
+            <input type="checkbox" name="active" value="1" {{ 'checked' if persona.active }} />
+            Puede ingresar al sistema
+          </label>
+          <button class="boton boton--primario boton--sm" type="submit">Guardar la ficha</button>
+          <a class="boton boton--fantasma boton--sm"
+             href="{{ url_for('panel.configuracion', vista='equipo') }}">Cerrar</a>
+        </div>
+      </form>
+
+      <form method="post" class="linea-superior">
+        <input type="hidden" name="accion" value="parametros-colaborador" />
+        <input type="hidden" name="id" value="{{ persona.id }}" />
+        <input type="hidden" name="vista" value="equipo" />
+
+        <div class="rejilla rejilla--4">
+          <div class="campo">
+            <label for="deber-{{ persona.id }}">Horas deber por día</label>
+            <input class="control control--compacto control-numero" type="number" step="0.25"
+                   id="deber-{{ persona.id }}" name="dailyTargetHours"
+                   value="{{ valor_entrada(ficha.config.dailyTargetHours) }}" />
+          </div>
+          <div class="campo">
+            <label for="saldo-{{ persona.id }}">Horas acumuladas previas</label>
+            <input class="control control--compacto control-numero" type="number" step="0.25"
+                   id="saldo-{{ persona.id }}" name="carriedBalanceHours"
+                   value="{{ valor_entrada(ficha.config.carriedBalanceHours) }}" />
+          </div>
+          <div class="campo">
+            <label for="vacprev-{{ persona.id }}">Vacaciones del año anterior (días)</label>
+            <input class="control control--compacto control-numero" type="number" step="0.5"
+                   id="vacprev-{{ persona.id }}" name="carriedVacationDays"
+                   value="{{ valor_entrada(ficha.config.carriedVacationDays) }}" />
+          </div>
+          <div class="campo">
+            <label for="vacbase-{{ persona.id }}">Base anual (días)</label>
+            <input class="control control--compacto control-numero" type="number" step="1"
+                   id="vacbase-{{ persona.id }}" name="annualVacationDays"
+                   value="{{ valor_entrada(ficha.config.annualVacationDays) }}" />
+          </div>
+
+          {{ editor_tarifa('Tarifa del colaborador', 'tarifa', ficha.modo_tarifa,
+                           ficha.tarifa.amount if ficha.tarifa else 0,
+                           ficha.tarifa.currency if ficha.tarifa else 'CRC',
+                           'Usar la tarifa del proyecto') }}
+
+          <div class="campo">
+            <label for="pdesde-{{ persona.id }}">Periodo del reporte: desde</label>
+            <input class="control control--compacto" type="date" id="pdesde-{{ persona.id }}"
+                   name="periodFrom" value="{{ ficha.config.periodFrom }}"
+                   max="{{ ficha.config.periodTo }}" />
+          </div>
+          <div class="campo">
+            <label for="phasta-{{ persona.id }}">Periodo del reporte: hasta</label>
+            <input class="control control--compacto" type="date" id="phasta-{{ persona.id }}"
+                   name="periodTo" value="{{ ficha.config.periodTo }}"
+                   min="{{ ficha.config.periodFrom }}" />
+          </div>
+        </div>
+
+        <div class="fila" style="margin-top:14px">
+          <button class="boton boton--primario boton--sm" type="submit">
+            Guardar los parámetros
+          </button>
+        </div>
+      </form>
+
+      <div class="linea-superior fila fila--separada">
+        <p class="texto-menudo texto-tenue">
+          Tarifa aplicada:
+          <span style="font-weight:500;color:var(--texto)">
+            {{ 'la del proyecto' if ficha.modo_tarifa == 'heredada' else formatear_tarifa(ficha.tarifa) }}
+          </span>
+          <span class="separador" aria-hidden="true">·</span>
+          Vacaciones:
+          <span class="tabulares" style="font-weight:500;color:var(--texto)">
+            {{ formatear_numero(ficha.saldo.available, 1) }} de
+            {{ formatear_numero(ficha.saldo.carried + ficha.saldo.annual, 1) }} días
+          </span>
+          {% if ficha.config.vacationSince %}
+            <span class="separador" aria-hidden="true">·</span>
+            último traslado con corte el {{ formatear_fecha(ficha.config.vacationSince) }}
+          {% endif %}
+        </p>
+
+        <form method="post" class="fila" style="gap:8px">
+          <input type="hidden" name="accion" value="trasladar-vacaciones" />
+          <input type="hidden" name="id" value="{{ persona.id }}" />
+          <input type="hidden" name="vista" value="equipo" />
+          <label class="texto-menudo texto-tenue" for="corte-{{ persona.id }}">Corte</label>
+          <input class="control control--compacto" type="date" id="corte-{{ persona.id }}" name="corte"
+                 value="{{ corte_sugerido }}" style="width:10.5rem"
+                 {% if ficha.config.vacationSince %}min="{{ sumar_dias(ficha.config.vacationSince, 1) }}"{% endif %} />
+          <button class="boton boton--secundario boton--sm" type="submit"
+                  data-confirmar="¿Cerrar el año de vacaciones de {{ persona.name }}? Los días que le queden pasan a «vacaciones del año anterior» y, desde la fecha de corte, solo cuentan las vacaciones nuevas.">
+            Trasladar saldo al año siguiente
+          </button>
+        </form>
+      </div>
+
+      <form method="post" class="linea-superior fila" style="gap:8px">
+        <input type="hidden" name="accion" value="restablecer-contrasena" />
+        <input type="hidden" name="id" value="{{ persona.id }}" />
+        <input type="hidden" name="vista" value="equipo" />
+        <div class="campo" style="flex:1;min-width:12rem">
+          <label for="pass-{{ persona.id }}">Contraseña nueva para {{ persona.name }}</label>
+          <input class="control control--compacto" id="pass-{{ persona.id }}" name="password"
+                 value="{{ contrasena_sugerida }}" autocomplete="off" />
+          <p class="campo-pista">
+            Al menos {{ LARGO_MINIMO }} caracteres, con mayúsculas, minúsculas y un número.
+          </p>
+        </div>
+        <button class="boton boton--secundario boton--sm" type="submit" style="align-self:flex-start;margin-top:22px">
+          {{ icono('llave', '14px') }} Restablecer
+        </button>
+      </form>
+    {% endif %}
+  </li>
+{% endmacro %}
+
+
+{# ─────────────────────────────────────────────────────────── Tarifario #}
+{% macro seccion_proyectos() %}
+  <section class="tarjeta tarjeta--recorta surge" style="animation-delay:140ms">
+    <div class="tarjeta-encabezado">
+      <div>
+        <h2>Proyectos y tarifas</h2>
+        <p>El tarifario lo controla exclusivamente la administración. Cada tarifa
+           lleva valor y moneda, o puede marcarse como «sin tarifa asignada»; los
+           montos nunca se suman entre monedas.</p>
+      </div>
+      <div class="tarjeta-encabezado-acciones">
+        {% if creando != 'proyecto' %}
+          <a class="boton boton--primario boton--sm"
+             href="{{ url_for('panel.configuracion', vista='proyectos', nuevo='proyecto') }}">
+            {{ icono('mas', '14px', 2) }} Nuevo proyecto
+          </a>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if creando == 'proyecto' %}
+      <form method="post" class="tarjeta-cuerpo" style="background:var(--superficie-2)">
+        <input type="hidden" name="accion" value="crear-proyecto" />
+        <input type="hidden" name="vista" value="proyectos" />
+        <div class="rejilla rejilla--3">
+          <div class="campo">
+            <label for="code">Código<span class="campo-requerido">*</span></label>
+            <input class="control" id="code" name="code" placeholder="2495" required />
+          </div>
+          <div class="campo">
+            <label for="name">Proyecto<span class="campo-requerido">*</span></label>
+            <input class="control" id="name" name="name" placeholder="Nombre del proyecto" required />
+          </div>
+          <div class="campo">
+            <label for="leader">Líder de proyecto</label>
+            <input class="control" id="leader" name="leader" placeholder="Responsable" />
+          </div>
+          <div class="campo">
+            <label for="ownerId">Pertenece a</label>
+            <select class="control" id="ownerId" name="ownerId">
+              <option value="">Proyecto de la empresa</option>
+              {% for persona in colaboradores %}
+                <option value="{{ persona.id }}">{{ persona.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          {{ editor_tarifa('Tarifa del proyecto', 'tarifa', 'sin-tarifa', 0, 'CRC', none, false) }}
+        </div>
+        <div class="fila" style="margin-top:20px;gap:8px">
+          <button class="boton boton--primario" type="submit">
+            {{ icono('visto', '16px') }} Crear el proyecto
+          </button>
+          <a class="boton boton--fantasma"
+             href="{{ url_for('panel.configuracion', vista='proyectos') }}">Cancelar</a>
+        </div>
+      </form>
+    {% endif %}
+
+    {% if not proyectos %}
+      {{ vacio('carpetas', 'Sin proyectos',
+               'Cree el primer proyecto para poder registrar horas contra él.') }}
+    {% else %}
+      <ul class="lista-dividida">
+        {% for proyecto in proyectos %}
+          <li>
+            {% if editando == proyecto.id %}
+              <form method="post">
+                <input type="hidden" name="accion" value="editar-proyecto" />
+                <input type="hidden" name="id" value="{{ proyecto.id }}" />
+                <input type="hidden" name="vista" value="proyectos" />
+                <div class="rejilla rejilla--3">
+                  <div class="campo">
+                    <label for="c-{{ proyecto.id }}">Código</label>
+                    <input class="control control--compacto" id="c-{{ proyecto.id }}"
+                           name="code" value="{{ proyecto.code }}" />
+                  </div>
+                  <div class="campo">
+                    <label for="n-{{ proyecto.id }}">Proyecto</label>
+                    <input class="control control--compacto" id="n-{{ proyecto.id }}"
+                           name="name" value="{{ proyecto.name }}" />
+                  </div>
+                  <div class="campo">
+                    <label for="l-{{ proyecto.id }}">Líder de proyecto</label>
+                    <input class="control control--compacto" id="l-{{ proyecto.id }}"
+                           name="leader" value="{{ proyecto.leader }}" />
+                  </div>
+                  <div class="campo">
+                    <label for="o-{{ proyecto.id }}">Pertenece a</label>
+                    <select class="control control--compacto" id="o-{{ proyecto.id }}" name="ownerId">
+                      <option value="">Proyecto de la empresa</option>
+                      {% for persona in colaboradores %}
+                        <option value="{{ persona.id }}" {{ 'selected' if proyecto.ownerId == persona.id }}>
+                          {{ persona.name }}
+                        </option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  {{ editor_tarifa('Tarifa del proyecto', 'tarifa',
+                                   'propia' if proyecto.rate else 'sin-tarifa',
+                                   proyecto.rate.amount if proyecto.rate else 0,
+                                   proyecto.rate.currency if proyecto.rate else 'CRC') }}
+                </div>
+                <div class="fila" style="margin-top:14px;gap:12px">
+                  <label class="fila texto-pequeno" style="gap:6px">
+                    <input type="checkbox" name="active" value="1" {{ 'checked' if proyecto.active }} />
+                    Activo
+                  </label>
+                  <button class="boton boton--primario boton--sm" type="submit">Guardar</button>
+                  <a class="boton boton--fantasma boton--sm"
+                     href="{{ url_for('panel.configuracion', vista='proyectos') }}">Cancelar</a>
+                </div>
+              </form>
+
+              {# Tarifa de cada persona en ESTE proyecto. Es el nivel más
+                 específico del tarifario: si aquí hay algo, gana sobre la
+                 tarifa del colaborador y sobre la del proyecto. #}
+              <div class="linea-superior">
+                <p class="campo-etiqueta" style="margin-bottom:4px">
+                  Tarifa por colaborador en este proyecto
+                </p>
+                <p class="texto-menudo texto-apagado" style="margin-bottom:14px">
+                  Lo que se deje en «Usar la tarifa general» toma la del colaborador
+                  y, si no tiene, la del proyecto.
+                </p>
+
+                {% if not colaboradores %}
+                  <p class="texto-menudo texto-apagado">
+                    Todavía no hay colaboradores a los que ponerles tarifa.
+                  </p>
+                {% else %}
+                  <div class="rejilla rejilla--2">
+                    {% for persona in colaboradores %}
+                      {% set propia = tarifas_proyecto.get(persona.id ~ '|' ~ proyecto.id) %}
+                      {% set modo = modo_tarifa(propia) if persona.id ~ '|' ~ proyecto.id in tarifas_proyecto else 'heredada' %}
+                      <form method="post" class="tarjeta" style="padding:14px 16px">
+                        <input type="hidden" name="accion" value="tarifa-persona-proyecto" />
+                        <input type="hidden" name="vista" value="proyectos" />
+                        <input type="hidden" name="usuario_id" value="{{ persona.id }}" />
+                        <input type="hidden" name="proyecto_id" value="{{ proyecto.id }}" />
+
+                        {{ editor_tarifa(persona.name, 'tarifa', modo,
+                                         propia.amount if propia else 0,
+                                         propia.currency if propia else 'CRC',
+                                         'Usar la tarifa general') }}
+
+                        <button class="boton boton--secundario boton--sm" type="submit"
+                                style="margin-top:10px">
+                          Guardar la tarifa de {{ persona.name.split()[0] }}
+                        </button>
+                      </form>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+            {% else %}
+              <div class="fila fila--separada" style="align-items:flex-start">
+                <div style="min-width:0;flex:1">
+                  <p class="texto-pequeno texto-fuerte">
+                    <span class="tabulares">{{ proyecto.code }}</span>
+                    <span class="separador" aria-hidden="true">·</span>{{ proyecto.name }}
+                    {% if not proyecto.active %}
+                      <span class="insignia insignia--neutra" style="margin-left:8px">Inactivo</span>
+                    {% endif %}
+                  </p>
+                  <p class="texto-menudo texto-tenue" style="margin-top:4px">
+                    {{ ('Líder: ' ~ proyecto.leader) if proyecto.leader else 'Sin líder asignado' }}
+                    <span class="separador" aria-hidden="true">·</span>
+                    {% if proyecto.ownerId %}
+                      {% set duenio = (colaboradores | selectattr('id', 'equalto', proyecto.ownerId) | list | first) %}
+                      {{ duenio.name if duenio else 'Colaborador' }}
+                    {% else %}Proyecto de la empresa{% endif %}
+                    <span class="separador" aria-hidden="true">·</span>
+                    <span class="texto-fuerte">{{ formatear_tarifa(proyecto.rate) }}</span>
+                  </p>
+                </div>
+
+                <div class="fila" style="gap:8px;flex-wrap:nowrap">
+                  <a class="boton-icono" aria-label="Editar proyecto"
+                     href="{{ url_for('panel.configuracion', vista='proyectos', editar=proyecto.id) }}">
+                    {{ icono('lapiz', '14px') }}
+                  </a>
+                  <form method="post">
+                    <input type="hidden" name="accion" value="eliminar-proyecto" />
+                    <input type="hidden" name="id" value="{{ proyecto.id }}" />
+                    <input type="hidden" name="vista" value="proyectos" />
+                    <button class="boton-icono boton-icono--peligro" type="submit"
+                            aria-label="Eliminar proyecto"
+                            data-confirmar="¿Eliminar el proyecto «{{ proyecto.name }}»?">
+                      {{ icono('papelera', '14px') }}
+                    </button>
+                  </form>
+                </div>
+              </div>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </section>
+{% endmacro %}
+
+
+{# ─────────────────────────────────────────────────── Historial de cambios #}
+{% macro seccion_historial() %}
+  <section class="tarjeta tarjeta--recorta surge" style="animation-delay:140ms">
+    <div class="tarjeta-encabezado">
+      <div>
+        <h2>Historial de cambios</h2>
+        <p>Quién cambió qué, cuándo y desde qué computadora. Se conservan los últimos
+           1.500 cambios. Además, SharePoint guarda cada versión del archivo de datos.</p>
+      </div>
+      <form method="get" class="tarjeta-encabezado-acciones">
+        <input type="hidden" name="vista" value="historial" />
+        <input class="control control--compacto" name="buscar" value="{{ busqueda }}"
+               placeholder="Buscar persona, acción o computadora" style="width:17rem" />
+        <button class="boton boton--secundario boton--sm" type="submit">{{ icono('filtro', '14px') }} Buscar</button>
+      </form>
+    </div>
+    {% if not historial %}
+      {{ vacio('lista', 'Sin cambios todavía', 'Aquí aparecerá cada cambio que se guarde en el sistema.') }}
+    {% else %}
+      <div class="tabla-desplazable">
+        <table class="tabla">
+          <thead>
+            <tr><th>Cuándo</th><th>Quién</th><th>Qué hizo</th><th>Desde</th></tr>
+          </thead>
+          <tbody>
+            {% for fila in historial %}
+              <tr>
+                <td class="tabulares" style="white-space:nowrap">
+                  {{ formatear_fecha(fila.momento[:10]) }}
+                  <span class="texto-apagado">{{ fila.momento[11:16] }}</span>
+                </td>
+                <td>
+                  <b class="texto-fuerte" style="font-weight:500">{{ fila.usuario or '—' }}</b>
+                  {% if fila.cuenta %}<br /><span class="texto-menudo texto-apagado">{{ fila.cuenta }}</span>{% endif %}
+                </td>
+                <td>{{ fila.accion }}</td>
+                <td class="texto-menudo texto-tenue">{{ fila.equipo or '—' }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+  </section>
+{% endmacro %}
+
+
+{# ───────────────────────────────────────────────────────────── Seguridad #}
+{% macro seccion_seguridad() %}
+  <div class="pila-media surge" style="animation-delay:140ms">
+    <section class="tarjeta tarjeta--acolchada">
+      <h2 class="tarjeta-titulo">Recuperar el acceso de administración</h2>
+      <p class="texto-pequeno texto-tenue" style="margin-top:4px;line-height:1.65">
+        Si nadie recuerda la contraseña de administración, una computadora conectada
+        con una de estas cuentas de Microsoft puede emitir una nueva desde Ajustes. La
+        cuenta que creó el sistema queda autorizada desde el principio.
+      </p>
+
+      {% if cuentas_recuperacion %}
+        <ul class="lista-dividida" style="margin:16px -20px 0">
+          {% for cuenta in cuentas_recuperacion %}
+            <li class="fila fila--separada">
+              <span>
+                <b class="texto-fuerte" style="font-weight:500">{{ cuenta.nombre or cuenta.correo }}</b>
+                <span class="texto-menudo texto-tenue">{{ cuenta.correo }}</span>
+              </span>
+              <form method="post">
+                <input type="hidden" name="accion" value="quitar-recuperacion" />
+                <input type="hidden" name="vista" value="seguridad" />
+                <input type="hidden" name="oid" value="{{ cuenta.oid }}" />
+                <input type="hidden" name="correo" value="{{ cuenta.correo }}" />
+                <button class="boton boton--fantasma boton--sm" type="submit"
+                        data-confirmar="¿Quitar a {{ cuenta.correo }} de las cuentas que pueden recuperar el acceso?">
+                  Quitar
+                </button>
+              </form>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="aviso-alerta" style="margin-top:16px">{{ icono('aviso', '16px') }}
+          <span>Ninguna cuenta está autorizada. Si se pierde la contraseña de administración, no habría cómo recuperarla.</span></p>
+      {% endif %}
+
+      <div class="linea-superior">
+        {% if cuenta_actual.oid and not cuenta_autorizada %}
+          <form method="post" class="fila" style="gap:10px">
+            <input type="hidden" name="accion" value="autorizar-recuperacion" />
+            <input type="hidden" name="vista" value="seguridad" />
+            <span class="texto-pequeno">Cuenta conectada en esta computadora:
+              <b>{{ cuenta_actual.correo }}</b></span>
+            <button class="boton boton--secundario boton--sm" type="submit">
+              {{ icono('escudo-visto', '14px') }} <span>Autorizarla</span>
+            </button>
+          </form>
+        {% elif cuenta_actual.oid %}
+          <p class="texto-pequeno texto-tenue">La cuenta conectada en esta computadora
+            ({{ cuenta_actual.correo }}) ya está autorizada.</p>
+        {% else %}
+          <p class="texto-pequeno texto-tenue">Esta computadora no tiene una cuenta de Microsoft conectada.</p>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+{% endmacro %}

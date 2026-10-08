@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block titulo %}Registro en Microsoft 365 · MAJERIE S.R.L{% endblock %}
+{% block presentacion %}{% endblock %}
+
+{% block cuerpo %}
+  <div class="pantalla-centro superficie" style="justify-content:flex-start">
+    <main class="panel-centro panel-centro--amplio">
+      <div class="panel-tarjeta surge">
+        <div class="panel-centrado">
+          {{ logo('15px') }}
+          <p class="panel-subtitulo">Para el administrador de Microsoft 365</p>
+          <h1 class="panel-titulo" style="margin-top:18px">Autorizar el Sistema de Registro de Horas</h1>
+          <p class="panel-texto">
+            Se hace <b>una sola vez</b> para toda la empresa y toma unos cinco minutos.
+            Permite que el programa lea y guarde en SharePoint con la cuenta de cada
+            persona, y solo en lo que esa persona ya puede ver.
+          </p>
+        </div>
+
+        <ol class="pasos-guia" style="margin-top:28px">
+          <li>Entre a <span class="codigo">https://entra.microsoft.com</span> con una cuenta
+            de administración (Administrador de aplicaciones o superior).</li>
+          <li>Vaya a <b>Aplicaciones → Registros de aplicaciones → Nuevo registro</b>.</li>
+          <li>Escriba como nombre <span class="codigo">MAJERIE Registro de Horas</span>. En
+            <b>Tipos de cuenta compatibles</b> elija <b>Solo las cuentas de este directorio
+            organizativo</b>.</li>
+          <li>En <b>URI de redirección</b> elija la plataforma <b>Cliente público/nativo
+            (móvil y escritorio)</b> y escriba
+            <span class="codigo" id="retorno">{{ retorno }}</span>
+            <button type="button" class="boton-icono" aria-label="Copiar" data-copiar="retorno">{{ icono('copiar', '13px') }}</button>.
+            Pulse <b>Registrar</b>.</li>
+          <li>Copie el <b>Id. de aplicación (cliente)</b> que aparece en la página de
+            resumen: es el identificador que pide el programa.</li>
+          <li>En <b>Autenticación</b>, abajo, active <b>Permitir flujos de clientes
+            públicos</b> y guarde.</li>
+          <li>En <b>Permisos de API → Agregar un permiso → Microsoft Graph → Permisos
+            delegados</b>, marque <span class="codigo">Files.ReadWrite.All</span> y
+            <span class="codigo">Sites.Read.All</span> (los de inicio de sesión
+            <span class="codigo">User.Read</span>, <span class="codigo">openid</span>,
+            <span class="codigo">profile</span> y <span class="codigo">offline_access</span>
+            ya vienen o se agregan igual).</li>
+          <li>Pulse <b>Conceder consentimiento de administrador para MAJERIE</b> y confirme.
+            Así nadie del equipo tendrá que aceptar permisos al conectar.</li>
+          <li>Comparta la carpeta de SharePoint del sistema con todo el equipo con
+            permiso de <b>edición</b>, y entregue a cada persona el enlace de la carpeta
+            y, si el programa no lo trae incluido, el identificador del paso 5.</li>
+        </ol>
+
+        <div class="aviso-info" style="margin-top:24px">
+          {{ icono('escudo-visto', '16px') }}
+          <span>
+            Los permisos son <b>delegados</b>: el programa nunca actúa por su cuenta ni ve
+            más que la persona que lo usa. Las contraseñas se escriben en la página de
+            Microsoft, no en el programa, y valen la verificación en dos pasos y las
+            políticas de acceso de la empresa.
+          </span>
+        </div>
+      </div>
+    </main>
+  </div>
+{% endblock %}
+
+{% block guiones %}
+  <script>
+    document.querySelectorAll("[data-copiar]").forEach((boton) => {
+      boton.addEventListener("click", () => {
+        const texto = document.getElementById(boton.dataset.copiar).textContent.trim();
+        navigator.clipboard.writeText(texto).then(() => window.MAJERIE && window.MAJERIE.avisar("Copiado: " + texto));
+      });
+    });
+  </script>
+{% endblock %}

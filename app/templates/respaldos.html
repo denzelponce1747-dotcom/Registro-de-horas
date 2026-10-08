@@ -1,0 +1,85 @@
+{% extends "armazon.html" %}
+{% from "piezas.html" import encabezado, vacio %}
+{% block titulo %}Copias de seguridad · MAJERIE S.R.L{% endblock %}
+
+{% block pantalla %}
+  <div class="pila">
+    {% call encabezado(
+        'Administrador',
+        'Copias de seguridad',
+        'Una copia por día en la carpeta «Respaldos» de SharePoint, de los últimos 30 '
+        ~ 'días. Restaurar una copia reemplaza los datos de todo el equipo por los de esa '
+        ~ 'fecha; antes se guarda la versión actual, por si acaso.') %}
+      <a class="boton boton--secundario" href="{{ url_for('ajustes.ajustes_inicio') }}#respaldos">
+        {{ icono('flecha-izquierda', '15px') }} <span>Ajustes</span>
+      </a>
+      <a class="boton boton--primario" href="{{ url_for('ajustes.descargar_actual') }}">
+        {{ icono('descargar', '15px') }} <span>Descargar una copia ahora</span>
+      </a>
+    {% endcall %}
+
+    {% if error %}
+      <p class="aviso-error">{{ icono('aviso', '16px') }}<span>{{ error }}</span></p>
+    {% endif %}
+
+    <section class="tarjeta tarjeta--recorta surge" style="animation-delay:80ms">
+      <div class="tarjeta-encabezado">
+        <div>
+          <h2>Copias en SharePoint</h2>
+          <p>{{ copias|length }} {{ 'copia' if copias|length == 1 else 'copias' }}, de la más nueva a la más vieja.</p>
+        </div>
+      </div>
+      {% if not copias %}
+        {{ vacio('archivo', 'Todavía no hay copias', 'La primera se hace sola hoy, la primera vez que alguien abre el programa.') }}
+      {% else %}
+        <ul class="lista-dividida">
+          {% for copia in copias %}
+            <li>
+              <div class="fila fila--separada">
+                <div>
+                  <p class="texto-pequeno texto-fuerte">{{ copia.nombre }}</p>
+                  <p class="texto-menudo texto-tenue tabulares">
+                    {{ formatear_tamano(copia.tamano) }}
+                    {% if copia.autor %} · subida por {{ copia.autor }}{% endif %}
+                    {% if copia.fecha %} · {{ formatear_momento(copia.fecha) }}{% endif %}
+                  </p>
+                </div>
+                <div class="fila" style="gap:8px;flex-wrap:nowrap">
+                  <a class="boton boton--fantasma boton--sm"
+                     href="{{ url_for('ajustes.descargar_respaldo', item=copia.id, nombre=copia.nombre) }}">
+                    {{ icono('descargar', '14px') }} <span>Descargar</span>
+                  </a>
+                  <form method="post" action="{{ url_for('ajustes.restaurar_respaldo') }}" data-local>
+                    <input type="hidden" name="item" value="{{ copia.id }}" />
+                    <button class="boton boton--secundario boton--sm" type="submit" data-peligro
+                            data-aceptar="Restaurar" data-texto-ocupado="Restaurando…"
+                            data-confirmar="¿Restaurar la copia «{{ copia.nombre }}»? Los datos de todo el equipo vuelven a como estaban ese día. La versión actual queda guardada en Respaldos.">
+                      {{ icono('refrescar', '14px') }} <span>Restaurar</span>
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </section>
+
+    <section class="tarjeta tarjeta--acolchada surge" style="animation-delay:140ms">
+      <h2 class="tarjeta-titulo">Restaurar desde un archivo</h2>
+      <p class="texto-pequeno texto-tenue" style="margin-top:4px">
+        Un archivo <span class="codigo">.majerie</span> descargado antes, o la base
+        <span class="codigo">majerie.db</span> de la versión anterior del sistema.
+      </p>
+      <form method="post" action="{{ url_for('ajustes.restaurar_respaldo') }}" enctype="multipart/form-data"
+            class="fila" style="margin-top:14px;gap:10px" data-local>
+        <input class="control" name="archivo" type="file" accept=".majerie,.db" required style="max-width:26rem" />
+        <button class="boton boton--secundario" type="submit" data-peligro data-aceptar="Restaurar"
+                data-texto-ocupado="Restaurando…"
+                data-confirmar="¿Reemplazar los datos de todo el equipo por los de ese archivo? La versión actual queda guardada en Respaldos.">
+          {{ icono('subir', '15px') }} <span>Restaurar el archivo</span>
+        </button>
+      </form>
+    </section>
+  </div>
+{% endblock %}

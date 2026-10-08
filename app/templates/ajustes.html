@@ -1,0 +1,361 @@
+{% extends "armazon.html" %}
+{% from "piezas.html" import encabezado %}
+{% block titulo %}Ajustes · MAJERIE S.R.L{% endblock %}
+
+{% block pantalla %}
+  <div class="pila">
+    {% call encabezado(
+        'Esta computadora',
+        'Ajustes',
+        'La conexión con el SharePoint de la empresa, la ventana del programa y la '
+        ~ 'apariencia. Lo que se cambia aquí vale solo para esta computadora.') %}
+      <a class="boton boton--secundario" href="{{ url_for('sesion.raiz') }}">
+        {{ icono('flecha-izquierda', '15px') }} <span>Volver al sistema</span>
+      </a>
+    {% endcall %}
+
+    <div class="ajustes-rejilla">
+      <nav class="indice-ajustes surge" aria-label="Secciones de ajustes">
+        <a href="#nube">{{ icono('nube', '16px') }} SharePoint</a>
+        <a href="#ventana">{{ icono('ventana', '16px') }} Ventana y apariencia</a>
+        <a href="#excel">{{ icono('hoja-calculo', '16px') }} Excel</a>
+        <a href="#respaldos">{{ icono('archivo', '16px') }} Copias de seguridad</a>
+        <a href="#avanzado">{{ icono('engranaje', '16px') }} Opciones avanzadas</a>
+        <a href="#acerca">{{ icono('info', '16px') }} Acerca del programa</a>
+      </nav>
+
+      <div class="pila-media escalonado">
+        {# ───────────────────────────────────────── SharePoint #}
+        <section class="tarjeta tarjeta--recorta" id="nube">
+          <div class="tarjeta-encabezado">
+            <div>
+              <h2>Conexión con SharePoint</h2>
+              <p>Los datos del equipo viven en una carpeta del SharePoint de la
+                 empresa. Esta computadora trabaja con una copia y guarda cada cambio
+                 en SharePoint al momento.</p>
+            </div>
+            {% if nube and nube.configurado %}
+              <div class="tarjeta-encabezado-acciones">
+                <form method="post" action="{{ url_for('ajustes.sincronizar') }}" data-local>
+                  <button class="boton boton--secundario boton--sm" type="submit" data-texto-ocupado="Sincronizando…">
+                    {{ icono('refrescar', '14px') }} <span>Sincronizar ahora</span>
+                  </button>
+                </form>
+              </div>
+            {% endif %}
+          </div>
+
+          <div class="tarjeta-cuerpo pila-media">
+            {% if nube and nube.configurado %}
+              <dl class="ficha-nube">
+                <div class="dato">
+                  <dt>Carpeta</dt>
+                  <dd>
+                    {{ nube.carpeta or sp.nombre_carpeta or '—' }}
+                    {% if nube.carpeta_url %}
+                      <small><a class="enlace" href="{{ nube.carpeta_url }}" target="_blank" rel="noopener">Abrir en SharePoint {{ icono('abrir-afuera', '12px') }}</a></small>
+                    {% endif %}
+                  </dd>
+                </div>
+                <div class="dato">
+                  <dt>Cuenta de Microsoft</dt>
+                  <dd>
+                    {{ cuenta.nombre or '—' }}
+                    <small>{{ cuenta.correo or 'Sin conectar' }}</small>
+                  </dd>
+                </div>
+                <div class="dato">
+                  <dt>Estado</dt>
+                  <dd>
+                    {% if nube.necesita_sesion %}
+                      <span class="insignia insignia--rechazada"><span class="insignia-punto"></span>Sesión vencida</span>
+                    {% elif nube.en_linea == false %}
+                      <span class="insignia insignia--pendiente"><span class="insignia-punto"></span>Sin conexión</span>
+                    {% elif nube.solo_lectura %}
+                      <span class="insignia insignia--pendiente"><span class="insignia-punto"></span>Solo lectura</span>
+                    {% else %}
+                      <span class="insignia insignia--aprobada"><span class="insignia-punto"></span>Conectado</span>
+                    {% endif %}
+                    <small>
+                      {% if nube.autor %}Último cambio: {{ nube.autor }}{% endif %}
+                      {% if nube.modificado %} · {{ formatear_momento(nube.modificado) }}{% endif %}
+                    </small>
+                  </dd>
+                </div>
+              </dl>
+
+              {% if nube.solo_lectura %}
+                <p class="aviso-alerta">{{ icono('aviso', '16px') }}<span>{{ nube.solo_lectura }}</span></p>
+              {% endif %}
+
+              <div class="fila" style="gap:8px">
+                {% if nube.necesita_sesion or not cuenta.conectada %}
+                  <a class="boton boton--primario boton--sm"
+                     href="{{ url_for('ajustes.conectar_microsoft', volver=url_for('ajustes.ajustes_inicio')) }}">
+                    {{ logo_microsoft('14px') }} <span>Volver a conectar la cuenta</span>
+                  </a>
+                {% else %}
+                  <a class="boton boton--secundario boton--sm"
+                     href="{{ url_for('ajustes.conectar_microsoft', volver=url_for('ajustes.ajustes_inicio')) }}">
+                    {{ logo_microsoft('14px') }} <span>Entrar con otra cuenta</span>
+                  </a>
+                {% endif %}
+                <form method="post" action="{{ url_for('ajustes.desconectar') }}" data-local>
+                  <button class="boton boton--fantasma boton--sm" type="submit" data-peligro
+                          data-aceptar="Desconectar"
+                          data-confirmar="¿Desconectar esta computadora de la carpeta de SharePoint? Los datos siguen en SharePoint; esta computadora solo deja de usarlos hasta que se vuelva a conectar.">
+                    {{ icono('desenchufar', '14px') }} <span>Desconectar esta computadora</span>
+                  </button>
+                </form>
+              </div>
+
+              <details class="detalle-plegable">
+                <summary>Usar otra carpeta de SharePoint</summary>
+                <form method="post" action="{{ url_for('ajustes.cambiar_carpeta') }}" class="pila-corta" data-local>
+                  <input type="hidden" name="desde" value="{{ url_for('ajustes.ajustes_inicio') }}" />
+                  <div class="campo">
+                    <label for="enlace-nuevo">Enlace de la carpeta nueva</label>
+                    <input class="control" id="enlace-nuevo" name="enlace" required autocomplete="off"
+                           spellcheck="false" placeholder="https://empresa.sharepoint.com/:f:/s/…" />
+                    <p class="campo-pista">Esta computadora pasará a usar los datos de esa
+                      carpeta. Los de la carpeta actual no se tocan.</p>
+                  </div>
+                  <div>
+                    <button class="boton boton--primario boton--sm" type="submit" data-texto-ocupado="Conectando…">
+                      {{ icono('enlace', '14px') }} <span>Cambiar de carpeta</span>
+                    </button>
+                  </div>
+                </form>
+              </details>
+            {% else %}
+              <p class="aviso-info">{{ icono('info', '16px') }}
+                <span>Esta computadora todavía no está conectada a la carpeta de la empresa.</span></p>
+              <div>
+                <a class="boton boton--primario" href="{{ url_for('ajustes.bienvenida') }}">
+                  {{ icono('enlace', '15px') }} <span>Conectar la carpeta de SharePoint</span>
+                </a>
+              </div>
+            {% endif %}
+          </div>
+        </section>
+
+        {# ───────────────────────────────────────── Ventana y apariencia #}
+        <section class="tarjeta tarjeta--recorta" id="ventana">
+          <div class="tarjeta-encabezado">
+            <div>
+              <h2>Ventana y apariencia</h2>
+              <p>El programa se abre en su propia ventana, con el navegador que elija.
+                 El tema se aplica al instante.</p>
+            </div>
+          </div>
+          <div class="tarjeta-cuerpo pila-media">
+            <div class="campo">
+              <span class="campo-etiqueta">Tema</span>
+              <div class="segmentado" role="radiogroup" aria-label="Tema">
+                {% for valor, texto, nombre_icono in [('auto', 'Automático', 'monitor'), ('claro', 'Claro', 'sol'), ('oscuro', 'Oscuro', 'luna')] %}
+                  <label>
+                    <input type="radio" name="tema" value="{{ valor }}" data-elegir-tema
+                           {{ 'checked' if tema == valor }} />
+                    {{ icono(nombre_icono, '15px') }} {{ texto }}
+                  </label>
+                {% endfor %}
+              </div>
+              <p class="campo-pista">«Automático» sigue al tema de Windows.</p>
+            </div>
+
+            <form method="post" action="{{ url_for('ajustes.elegir_navegador') }}" class="pila-corta" data-local id="formulario-navegador">
+              <span class="campo-etiqueta">Navegador de la ventana</span>
+              <div class="lista-navegadores">
+                {% for navegador in navegadores_lista %}
+                  <label class="opcion">
+                    <input type="radio" name="navegador" value="{{ navegador.clave }}"
+                           {{ 'checked' if navegador_actual and navegador_actual.ruta == navegador.ruta }} />
+                    <span>
+                      <b>{{ navegador.nombre }}{% if navegador.predeterminado %} <span class="insignia insignia--neutra" style="display:inline-flex;margin-left:6px">Predeterminado</span>{% endif %}</b>
+                      <span class="codigo" style="background:transparent;padding:0">{{ navegador.ruta }}</span>
+                    </span>
+                  </label>
+                {% endfor %}
+                <label class="opcion" id="opcion-otro" {{ 'hidden' if not (navegador_actual and navegador_actual.clave == 'otro') }}>
+                  <input type="radio" name="navegador" value="otro"
+                         {{ 'checked' if navegador_actual and navegador_actual.clave == 'otro' }} />
+                  <span>
+                    <b id="otro-nombre">{{ navegador_actual.nombre if navegador_actual and navegador_actual.clave == 'otro' else 'Otro navegador' }}</b>
+                    <span class="codigo" style="background:transparent;padding:0" id="otro-ruta-texto">{{ navegador_actual.ruta if navegador_actual and navegador_actual.clave == 'otro' }}</span>
+                  </span>
+                </label>
+                <input type="hidden" name="navegador_ruta" id="otro-ruta"
+                       value="{{ navegador_actual.ruta if navegador_actual and navegador_actual.clave == 'otro' }}" />
+              </div>
+              <div class="fila" style="gap:8px">
+                <button class="boton boton--primario boton--sm" type="submit">
+                  {{ icono('visto', '14px') }} <span>Guardar el navegador</span>
+                </button>
+                <button class="boton boton--fantasma boton--sm" type="button" id="buscar-navegador">
+                  {{ icono('carpeta', '14px') }} <span>Buscar otro navegador…</span>
+                </button>
+              </div>
+              <p class="campo-pista">Se usa la próxima vez que abra el programa. Sirven Chrome,
+                Edge, Brave, Vivaldi y otros basados en Chromium.</p>
+            </form>
+          </div>
+        </section>
+
+        {# ───────────────────────────────────────── Excel #}
+        {% if es_admin %}
+        <section class="tarjeta tarjeta--acolchada" id="excel">
+          <h2 class="tarjeta-titulo">Excel en SharePoint</h2>
+          <p class="texto-pequeno texto-tenue" style="margin-top:4px;line-height:1.65">
+            Después de cada cambio, esta computadora vuelve a armar el reporte general y
+            lo deja en la carpeta del sistema como «Registro de Horas MAJERIE (se
+            actualiza solo).xlsx». Se puede abrir desde el celular o la web, aunque
+            nadie tenga el programa abierto. Es solo para leer.
+          </p>
+          <p class="aviso-alerta" style="margin-top:12px">{{ icono('aviso', '16px') }}
+            <span>Lo puede abrir <b>cualquiera con acceso a la carpeta</b> —es decir, todo el
+              equipo— y trae horas, tarifas, montos y ausencias de todas las personas.
+              Actívelo solo si esa carpeta es exclusiva de la administración.</span></p>
+          <form method="post" action="{{ url_for('ajustes.excel') }}" class="fila" style="margin-top:16px;gap:10px" data-local>
+            <input type="hidden" name="activo" value="{{ '0' if excel_automatico else '1' }}" />
+            <span class="insignia {{ 'insignia--aprobada' if excel_automatico else 'insignia--neutra' }}">
+              <span class="insignia-punto" style="background:currentColor"></span>
+              {{ 'Se actualiza solo' if excel_automatico else 'Desactivado en esta computadora' }}
+            </span>
+            <button class="boton boton--secundario boton--sm" type="submit">
+              {{ 'Desactivar' if excel_automatico else 'Activar' }}
+            </button>
+            {% if excel_url %}
+              <a class="boton boton--fantasma boton--sm" href="{{ excel_url }}" target="_blank" rel="noopener">
+                {{ icono('abrir-afuera', '14px') }} <span>Abrir el Excel en SharePoint</span>
+              </a>
+            {% endif %}
+          </form>
+        </section>
+        {% endif %}
+
+        {# ───────────────────────────────────────── Respaldos #}
+        <section class="tarjeta tarjeta--acolchada" id="respaldos">
+          <h2 class="tarjeta-titulo">Copias de seguridad</h2>
+          <p class="texto-pequeno texto-tenue" style="margin-top:4px;line-height:1.65">
+            Cada día, la primera computadora que abre el programa deja una copia en la
+            carpeta «Respaldos» de SharePoint; se conservan los últimos 30 días. Además,
+            SharePoint guarda el historial de versiones de cada archivo.
+          </p>
+          <div class="fila" style="margin-top:16px;gap:8px">
+            {% if es_admin %}
+              <a class="boton boton--secundario boton--sm" href="{{ url_for('ajustes.respaldos') }}">
+                {{ icono('archivo', '14px') }} <span>Ver y restaurar copias</span>
+              </a>
+              <a class="boton boton--fantasma boton--sm" href="{{ url_for('ajustes.descargar_actual') }}">
+                {{ icono('descargar', '14px') }} <span>Descargar una copia ahora</span>
+              </a>
+            {% else %}
+              <span class="texto-menudo texto-apagado">Las copias las maneja la administración: ingrese con la cuenta de administración para verlas.</span>
+            {% endif %}
+          </div>
+
+          {% if puede_recuperar %}
+            <div class="linea-superior">
+              <p class="texto-pequeno texto-fuerte">¿Nadie recuerda la contraseña de administración?</p>
+              <p class="texto-menudo texto-tenue" style="margin-top:2px">
+                Su cuenta de Microsoft está autorizada para emitir una contraseña nueva.
+                Las horas y las demás cuentas no se tocan.
+              </p>
+              <form method="post" action="{{ url_for('ajustes.recuperar_acceso') }}" style="margin-top:10px">
+                <button class="boton boton--secundario boton--sm" type="submit"
+                        data-confirmar="¿Emitir una contraseña nueva para la cuenta de administración? La anterior deja de servir.">
+                  {{ icono('llave', '14px') }} <span>Restablecer la contraseña de administración</span>
+                </button>
+              </form>
+            </div>
+          {% endif %}
+        </section>
+
+        {# ───────────────────────────────────────── Avanzado #}
+        <section class="tarjeta tarjeta--acolchada" id="avanzado">
+          <h2 class="tarjeta-titulo">Opciones avanzadas</h2>
+          <p class="texto-pequeno texto-tenue" style="margin-top:4px;line-height:1.65">
+            La aplicación registrada en el Microsoft 365 de la empresa.
+            {% if cliente_incluido %}El programa ya trae su identificador; solo hace falta cambiarlo si la empresa registró otra.{% else %}Lo da el administrador de Microsoft 365.{% endif %}
+            <a class="enlace" href="{{ url_for('ajustes.ayuda_registro') }}" target="_blank">Instrucciones para el administrador</a>
+          </p>
+          <form method="post" action="{{ url_for('ajustes.avanzado') }}" class="rejilla rejilla--2" style="margin-top:16px" data-local>
+            <div class="campo">
+              <label for="cliente_id">Identificador de la aplicación (Client ID)</label>
+              <input class="control control--compacto tabulares" id="cliente_id" name="cliente_id"
+                     value="{{ sp.cliente_id or '' }}" autocomplete="off" spellcheck="false"
+                     placeholder="{{ cliente_id if cliente_incluido else 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx' }}" />
+            </div>
+            <div class="campo">
+              <label for="inquilino">Inquilino (Tenant ID o dominio)</label>
+              <input class="control control--compacto" id="inquilino" name="inquilino"
+                     value="{{ sp.inquilino or '' }}" autocomplete="off" spellcheck="false"
+                     placeholder="Se averigua solo a partir del enlace" />
+            </div>
+            <div class="campo" style="grid-column:1/-1">
+              <div>
+                <button class="boton boton--secundario boton--sm" type="submit">Guardar</button>
+              </div>
+              <p class="campo-pista">Modo de guardado con SharePoint:
+                <b>{{ {'condicional': 'control de versiones (If-Match)', 'candado': 'en fila con candado'}.get(sp.modo_concurrencia, 'se prueba al conectar') }}</b>.</p>
+            </div>
+          </form>
+        </section>
+
+        {# ───────────────────────────────────────── Acerca de #}
+        <section class="tarjeta tarjeta--acolchada" id="acerca">
+          <div class="fila fila--separada" style="align-items:flex-start">
+            <div>
+              <h2 class="tarjeta-titulo">Sistema de Registro de Horas</h2>
+              <p class="texto-pequeno texto-tenue" style="margin-top:4px">
+                Versión {{ version }} · MAJERIE S.R.L
+              </p>
+            </div>
+            {{ marca_compacta('34px') }}
+          </div>
+          <dl class="rejilla rejilla--2" style="margin-top:16px">
+            <div class="dato">
+              <dt>Datos de esta computadora</dt>
+              <dd class="codigo" style="display:inline-block;margin-top:6px">{{ carpeta_datos }}</dd>
+            </div>
+            <div class="dato">
+              <dt>Registro del programa</dt>
+              <dd style="margin-top:6px"><a class="enlace texto-pequeno" href="{{ url_for('ajustes.ver_registro') }}" target="_blank">Ver las últimas líneas</a></dd>
+            </div>
+          </dl>
+        </section>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block guiones %}
+  <script>
+    // «Buscar otro navegador…» abre el cuadro de Windows para elegir el .exe.
+    (function () {
+      const boton = document.getElementById("buscar-navegador");
+      if (!boton) return;
+      boton.addEventListener("click", async () => {
+        boton.disabled = true;
+        try {
+          const respuesta = await fetch("/ajustes/navegador/buscar", { method: "POST" });
+          const datos = await respuesta.json();
+          if (datos.ok) {
+            const opcion = document.getElementById("opcion-otro");
+            opcion.hidden = false;
+            opcion.querySelector("input").checked = true;
+            document.getElementById("otro-nombre").textContent = datos.nombre;
+            document.getElementById("otro-ruta-texto").textContent = datos.ruta;
+            document.getElementById("otro-ruta").value = datos.ruta;
+          } else if (datos.error) {
+            window.MAJERIE && window.MAJERIE.avisar(datos.error, "error");
+          }
+        } catch (e) {
+          window.MAJERIE && window.MAJERIE.avisar("No se pudo abrir el cuadro para buscar el navegador.", "error");
+        } finally {
+          boton.disabled = false;
+        }
+      });
+    })();
+  </script>
+{% endblock %}

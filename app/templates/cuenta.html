@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block titulo %}Mi contraseña · MAJERIE S.R.L{% endblock %}
+
+{% block cuerpo %}
+  <div class="pantalla-centro superficie">
+    <div class="halos" aria-hidden="true">
+      <span class="halo-acento deriva"></span>
+    </div>
+
+    <main class="panel-centro">
+      <div class="panel-tarjeta surge">
+        <div class="panel-centrado">
+          {{ logo('16px') }}
+          <span class="vacio-icono" style="margin-top:28px">{{ icono('escudo-visto', '20px', 1.7) }}</span>
+          <h1 class="panel-titulo" style="margin-top:16px">Cambiar mi contraseña</h1>
+          <p class="panel-texto">
+            {{ usuario.actingAs }} · usuario «{{ usuario.username }}». La contraseña
+            nueva debe tener al menos {{ LARGO_MINIMO }} caracteres, combinar
+            mayúsculas y minúsculas e incluir un número.
+          </p>
+        </div>
+
+        <form method="post" class="panel-formulario">
+          <div class="campo">
+            <label for="actual">Contraseña actual<span class="campo-requerido">*</span></label>
+            <input class="control" id="actual" name="actual" type="password"
+                   autocomplete="current-password" required />
+          </div>
+
+          <div class="campo">
+            <label for="nueva">Contraseña nueva<span class="campo-requerido">*</span></label>
+            <input class="control" id="nueva" name="nueva" type="password"
+                   autocomplete="new-password" minlength="{{ LARGO_MINIMO }}" required />
+          </div>
+
+          <div class="campo">
+            <label for="repetir">Repita la contraseña nueva<span class="campo-requerido">*</span></label>
+            <input class="control" id="repetir" name="repetir" type="password"
+                   autocomplete="new-password" minlength="{{ LARGO_MINIMO }}" required />
+          </div>
+
+          {% if error %}<p role="alert" class="aviso-error">{{ error }}</p>{% endif %}
+
+          <button type="submit" class="boton boton--primario boton--lg boton--ancho">
+            {{ icono('visto', '16px') }} <span>Guardar la contraseña</span>
+          </button>
+        </form>
+
+        <a class="enlace-discreto" href="{{ volver }}">
+          Volver sin cambiar nada
+        </a>
+      </div>
+    </main>
+  </div>
+{% endblock %}

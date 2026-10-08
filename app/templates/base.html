@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="es" data-tema="{{ tema or 'auto' }}">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow, nocache" />
+    <meta name="color-scheme" content="light dark" />
+    <title>{% block titulo %}Sistema de Registro de Horas · MAJERIE S.R.L{% endblock %}</title>
+    <link rel="icon" href="{{ url_for('static', filename='icono.svg') }}" type="image/svg+xml" />
+    <link rel="icon" href="{{ url_for('static', filename='iconos/favicon-32.png') }}" sizes="32x32" />
+    <script>
+      // La presentación con el logotipo sale una sola vez por ventana: al
+      // abrir el programa, no en cada pantalla.
+      (function () {
+        try {
+          if (!sessionStorage.getItem("majerie:presentado")) {
+            document.documentElement.dataset.presentar = "1";
+            sessionStorage.setItem("majerie:presentado", "1");
+          }
+        } catch (e) {}
+      })();
+    </script>
+    <link rel="stylesheet" href="{{ estatico('estilo.css') }}" />
+    <script src="{{ estatico('app.js') }}" defer></script>
+  </head>
+  <body data-version-datos="{{ nube.version_datos if nube else '' }}">
+    {% block presentacion %}
+      <div class="presentacion" id="presentacion" aria-hidden="true">
+        {{ logo('30px', animado=true, clase='presentacion-logo') }}
+        <span class="presentacion-hilo"></span>
+        <p class="presentacion-lema">Sistema de Registro de Horas</p>
+      </div>
+    {% endblock %}
+
+    {% block cuerpo %}{% endblock %}
+
+    {% with avisos = get_flashed_messages(with_categories=true) %}
+      {% if avisos %}
+        <div class="avisos" id="avisos" role="status" aria-live="polite">
+          {% for categoria, texto in avisos %}
+            <div class="aviso {{ 'aviso--error' if categoria == 'error' else ('aviso--pendiente' if categoria == 'pendiente' else '') }}">
+              <span class="aviso-marca" aria-hidden="true">
+                {% if categoria == 'error' %}
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 7v6"/><path d="M12 17h.01"/></svg>
+                {% elif categoria == 'pendiente' %}
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 7v5l3 2"/></svg>
+                {% else %}
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17 19 7"/></svg>
+                {% endif %}
+              </span>
+              <div>
+                <b>
+                  {%- if categoria == 'error' -%}No se pudo completar
+                  {%- elif categoria == 'pendiente' -%}Enviado a aprobación
+                  {%- else -%}Listo{%- endif -%}
+                </b>
+                <p>{{ texto }}</p>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    {% block guiones %}{% endblock %}
+  </body>
+</html>

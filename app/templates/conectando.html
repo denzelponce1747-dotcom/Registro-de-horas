@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block titulo %}Conectando con SharePoint · MAJERIE S.R.L{% endblock %}
+
+{% block cuerpo %}
+  <div class="pantalla-centro superficie">
+    <div class="halos" aria-hidden="true"><span class="halo-acento deriva"></span></div>
+
+    <main class="panel-centro">
+      <div class="panel-tarjeta surge" style="text-align:center">
+        <div class="panel-centrado">
+          {{ logo('16px', animado=true) }}
+          <span class="vacio-icono" style="margin-top:30px">{{ icono('nube', '22px', 1.6) }}</span>
+          <h1 class="panel-titulo" style="margin-top:16px" id="titulo">Trayendo los datos de SharePoint</h1>
+          <p class="panel-texto" id="detalle">
+            Es la primera vez en esta computadora: se descarga la información del
+            equipo. Tarda unos segundos.
+          </p>
+        </div>
+
+        <div class="pila-corta" style="margin-top:26px" id="esqueleto" aria-hidden="true">
+          <span class="esqueleto" style="height:12px;width:80%;margin:0 auto"></span>
+          <span class="esqueleto" style="height:12px;width:62%;margin:0 auto"></span>
+          <span class="esqueleto" style="height:12px;width:70%;margin:0 auto"></span>
+        </div>
+
+        <div class="fila" style="margin-top:26px;justify-content:center;gap:8px" id="acciones" hidden>
+          <button type="button" class="boton boton--primario" id="reintentar">
+            {{ icono('refrescar', '15px') }} <span>Reintentar</span>
+          </button>
+          <a class="boton boton--secundario" href="{{ url_for('ajustes.ajustes_inicio') }}">
+            {{ icono('engranaje', '15px') }} <span>Ajustes</span>
+          </a>
+        </div>
+      </div>
+    </main>
+  </div>
+{% endblock %}
+
+{% block guiones %}
+  <script>
+    (function () {
+      const volver = {{ volver|tojson }};
+      const titulo = document.getElementById("titulo");
+      const detalle = document.getElementById("detalle");
+      const acciones = document.getElementById("acciones");
+      const esqueleto = document.getElementById("esqueleto");
+      let intentos = 0;
+
+      async function mirar(forzar) {
+        intentos += 1;
+        try {
+          const respuesta = await fetch("/estado?c=conectando" + (forzar ? "&comprobar=1" : ""), { cache: "no-store" });
+          const datos = await respuesta.json();
+          const nube = datos.nube || {};
+          if (nube.copia_local) {
+            location.replace(volver);
+            return;
+          }
+          if (nube.necesita_sesion) {
+            titulo.textContent = "Hay que volver a conectar la cuenta de Microsoft";
+            detalle.innerHTML = 'La sesión venció. <a class="enlace" href="/conexion/microsoft?volver=' +
+              encodeURIComponent(volver) + '">Volver a conectar</a>';
+            acciones.hidden = false;
+            esqueleto.hidden = true;
+            return;
+          }
+          if (nube.en_linea === false || nube.error) {
+            titulo.textContent = "No se pudo llegar a SharePoint";
+            detalle.textContent = (nube.error || "Sin conexión.") + " Revise el internet y vuelva a intentar.";
+            acciones.hidden = false;
+            esqueleto.hidden = true;
+            return;
+          }
+        } catch (e) {
+          /* el servidor está arrancando */
+        }
+        setTimeout(() => mirar(intentos % 5 === 0), 1200);
+      }
+
+      document.getElementById("reintentar").addEventListener("click", () => {
+        acciones.hidden = true;
+        esqueleto.hidden = false;
+        titulo.textContent = "Trayendo los datos de SharePoint";
+        detalle.textContent = "Reintentando…";
+        mirar(true);
+      });
+
+      mirar(true);
+    })();
+  </script>
+{% endblock %}

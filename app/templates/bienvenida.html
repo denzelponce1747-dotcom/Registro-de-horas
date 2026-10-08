@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+{% block titulo %}Bienvenida · MAJERIE S.R.L{% endblock %}
+
+{% set numero_paso = {'enlace': 1, 'cuenta': 2, 'vacia': 3}[paso] %}
+
+{% block cuerpo %}
+  <div class="pantalla-centro superficie">
+    <div class="halos" aria-hidden="true">
+      <span class="halo-acento deriva"></span>
+      <span class="halo-gris deriva"></span>
+    </div>
+
+    <main class="panel-centro {{ 'panel-centro--amplio' if paso == 'vacia' else 'panel-centro--ancho' }}">
+      <div class="panel-tarjeta surge">
+        <div class="panel-centrado">
+          {{ logo('17px', animado=true) }}
+          <p class="panel-subtitulo aparece" style="animation-delay:1000ms">Sistema de Registro de Horas</p>
+        </div>
+
+        <ol class="pasos" aria-label="Pasos para empezar">
+          {% for indice, texto in [(1, 'Carpeta de SharePoint'), (2, 'Cuenta de Microsoft'), (3, 'Datos')] %}
+            <li class="paso {{ 'paso--hecho' if indice < numero_paso else ('paso--actual' if indice == numero_paso) }}">
+              <span class="paso-numero">{% if indice < numero_paso %}✓{% else %}{{ indice }}{% endif %}</span>
+              <span class="paso-texto">{{ texto }}</span>
+            </li>
+            {% if not loop.last %}
+              <li class="paso-linea {{ 'paso-linea--hecha' if indice < numero_paso }}" aria-hidden="true"></li>
+            {% endif %}
+          {% endfor %}
+        </ol>
+
+        {% if paso == 'enlace' %}
+          {{ paso_enlace() }}
+        {% elif paso == 'cuenta' %}
+          {{ paso_cuenta() }}
+        {% else %}
+          {{ paso_datos() }}
+        {% endif %}
+      </div>
+
+      <p class="panel-nota aparece" style="animation-delay:600ms">
+        Esto se hace una sola vez en cada computadora.
+        <a href="{{ url_for('ajustes.manual', perfil='uso') }}" target="_blank" rel="noopener">Manual</a>
+        ·
+        <a href="{{ url_for('ajustes.ajustes_inicio') }}">Ajustes</a>
+      </p>
+    </main>
+  </div>
+{% endblock %}
+
+
+{% macro paso_enlace() %}
+  <div class="surge" style="animation-delay:200ms">
+    <h1 class="panel-titulo" style="margin-top:22px;text-align:center">Conecte la carpeta de la empresa</h1>
+    <p class="panel-texto" style="text-align:center">
+      Los datos del sistema —usuarios, horas, ausencias y proyectos— viven en una
+      carpeta del SharePoint de la empresa. Pegue el enlace de la carpeta que le
+      dieron.
+    </p>
+  </div>
+
+  <form method="post" action="{{ url_for('ajustes.bienvenida') }}" class="panel-formulario surge"
+        style="animation-delay:280ms" data-local>
+    <div class="campo">
+      <label for="enlace">Enlace de la carpeta de SharePoint<span class="campo-requerido">*</span></label>
+      <input class="control" id="enlace" name="enlace" value="{{ enlace }}" required
+             autocomplete="off" spellcheck="false" data-enfocar
+             placeholder="https://empresa.sharepoint.com/:f:/s/…" />
+      <p class="campo-pista">
+        En SharePoint, abra la carpeta y use <b>Copiar vínculo</b> (o Compartir →
+        Copiar vínculo). También sirve la dirección de la barra del navegador
+        mientras mira la carpeta.
+      </p>
+    </div>
+
+    {% if not cliente_incluido %}
+      <div class="aviso-info">
+        {{ icono('info', '16px') }}
+        <span>
+          La primera vez, el administrador de Microsoft 365 de la empresa tiene
+          que autorizar este programa y darle un <b>identificador de aplicación</b>.
+          <a class="enlace" href="{{ url_for('ajustes.ayuda_registro') }}" target="_blank">Ver las instrucciones para el administrador</a>
+        </span>
+      </div>
+      <div class="campo">
+        <label for="cliente_id">Identificador de la aplicación<span class="campo-requerido">*</span></label>
+        <input class="control tabulares" id="cliente_id" name="cliente_id" value="{{ cliente_id }}"
+               required autocomplete="off" spellcheck="false"
+               placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
+      </div>
+    {% endif %}
+
+    <details class="detalle-plegable">
+      <summary>Opciones avanzadas</summary>
+      <div class="pila-corta">
+        {% if cliente_incluido %}
+          <div class="campo">
+            <label for="cliente_id">Otro identificador de aplicación (opcional)</label>
+            <input class="control control--compacto tabulares" id="cliente_id" name="cliente_id"
+                   value="{{ cliente_id }}" autocomplete="off" spellcheck="false"
+                   placeholder="Se usa el que trae el programa" />
+          </div>
+        {% endif %}
+        <div class="campo">
+          <label for="inquilino">Inquilino de Microsoft 365 (opcional)</label>
+          <input class="control control--compacto" id="inquilino" name="inquilino" value="{{ inquilino }}"
+                 autocomplete="off" spellcheck="false" placeholder="Se averigua solo a partir del enlace" />
+        </div>
+      </div>
+    </details>
+
+    <button type="submit" class="boton boton--primario boton--lg boton--ancho" data-texto-ocupado="Revisando el enlace…">
+      {{ logo_microsoft('16px') }} <span>Continuar con Microsoft</span>
+    </button>
+  </form>
+{% endmacro %}
+
+
+{% macro paso_cuenta() %}
+  <div class="surge" style="animation-delay:200ms;text-align:center">
+    <h1 class="panel-titulo" style="margin-top:22px">Entre con su cuenta de Microsoft</h1>
+    <p class="panel-texto">
+      El programa usa su cuenta de Microsoft 365 para leer y guardar en la carpeta
+      de SharePoint. La contraseña se escribe en la página de Microsoft, nunca
+      aquí.
+    </p>
+  </div>
+  <div class="panel-formulario surge" style="animation-delay:280ms">
+    <p class="aviso-info">
+      {{ icono('carpeta', '16px') }}
+      <span class="codigo" style="background:transparent;padding:0">{{ enlace[:90] }}{{ '…' if enlace|length > 90 }}</span>
+    </p>
+    <a class="boton boton--primario boton--lg boton--ancho"
+       href="{{ url_for('ajustes.conectar_microsoft', volver=url_for('ajustes.carpeta')) }}">
+      {{ logo_microsoft('16px') }} <span>Entrar con Microsoft</span>
+    </a>
+    <form method="post" action="{{ url_for('ajustes.desconectar') }}" data-local>
+      <button type="submit" class="enlace-discreto" style="margin-top:4px">Usar otro enlace</button>
+    </form>
+  </div>
+{% endmacro %}
+
+
+{% macro paso_datos() %}
+  <div class="surge" style="animation-delay:200ms;text-align:center">
+    <h1 class="panel-titulo" style="margin-top:22px">La carpeta todavía está vacía</h1>
+    <p class="panel-texto">
+      Conectado como <b>{{ cuenta.nombre or cuenta.correo }}</b> a la carpeta
+      <b>«{{ nombre_carpeta }}»</b>. El sistema guardará ahí sus datos, dentro de
+      una subcarpeta «Sistema de Registro de Horas». Esto se hace una sola vez:
+      las demás computadoras solo necesitan el enlace.
+    </p>
+  </div>
+
+  <form method="post" action="{{ url_for('ajustes.empezar') }}" enctype="multipart/form-data"
+        class="panel-formulario surge" style="animation-delay:280ms" data-local id="formulario-datos">
+    <div class="opciones">
+      {% if hay_anterior %}
+        <label class="opcion">
+          <input type="radio" name="origen" value="anterior" checked />
+          <span>
+            <b>Subir los datos de esta computadora</b>
+            <span>Se encontraron los datos de la versión anterior del sistema (la del
+              servidor con ventana negra): usuarios, contraseñas, horas, ausencias,
+              proyectos y tarifas. Se copian a SharePoint; el archivo original no se
+              borra.</span>
+          </span>
+        </label>
+      {% endif %}
+      <label class="opcion">
+        <input type="radio" name="origen" value="nueva" {{ 'checked' if not hay_anterior }} />
+        <span>
+          <b>Empezar desde cero</b>
+          <span>Se crea la cuenta de administración y nada más. El equipo y los
+            proyectos se agregan después, desde Configuración.</span>
+        </span>
+      </label>
+      <label class="opcion">
+        <input type="radio" name="origen" value="archivo" />
+        <span>
+          <b>Restaurar una copia de seguridad</b>
+          <span>Un archivo <span class="codigo">.majerie</span> descargado del programa,
+            o la base <span class="codigo">majerie.db</span> de la versión anterior.</span>
+        </span>
+      </label>
+    </div>
+
+    <div class="pila-corta" data-origen="nueva" {{ 'hidden' if hay_anterior }}>
+      <div class="rejilla rejilla--2">
+        <div class="campo">
+          <label for="usuario">Usuario de administración</label>
+          <input class="control" id="usuario" name="usuario" value="majerie"
+                 autocapitalize="none" spellcheck="false" />
+        </div>
+        <div class="campo"></div>
+        <div class="campo">
+          <label for="contrasena">Contraseña<span class="campo-requerido">*</span></label>
+          <input class="control" id="contrasena" name="contrasena" type="password"
+                 autocomplete="new-password" minlength="{{ LARGO_MINIMO }}" />
+        </div>
+        <div class="campo">
+          <label for="repetir">Repítala<span class="campo-requerido">*</span></label>
+          <input class="control" id="repetir" name="repetir" type="password"
+                 autocomplete="new-password" minlength="{{ LARGO_MINIMO }}" />
+        </div>
+      </div>
+      <p class="campo-pista">
+        Al menos {{ LARGO_MINIMO }} caracteres, con mayúsculas, minúsculas y un
+        número. La comparten las dos personas de la administración.
+      </p>
+    </div>
+
+    <div class="campo" data-origen="archivo" hidden>
+      <label for="archivo">Archivo de la copia</label>
+      <input class="control" id="archivo" name="archivo" type="file" accept=".majerie,.db" />
+    </div>
+
+    <button type="submit" class="boton boton--primario boton--lg boton--ancho"
+            data-texto-ocupado="Creando los datos en SharePoint…">
+      {{ icono('nube', '17px') }} <span>Guardar los datos en SharePoint</span>
+    </button>
+  </form>
+{% endmacro %}
+
+
+{% block guiones %}
+  <script>
+    // Muestra los campos de la opción elegida y exige solo esos.
+    (function () {
+      const formulario = document.getElementById("formulario-datos");
+      if (!formulario) return;
+      const refrescar = () => {
+        const elegido = formulario.querySelector('input[name="origen"]:checked');
+        formulario.querySelectorAll("[data-origen]").forEach((bloque) => {
+          const activo = elegido && bloque.dataset.origen === elegido.value;
+          bloque.hidden = !activo;
+          bloque.querySelectorAll("input").forEach((campo) => {
+            if (campo.name === "contrasena" || campo.name === "repetir" || campo.name === "archivo") {
+              campo.required = activo;
+            }
+          });
+        });
+      };
+      formulario.addEventListener("change", refrescar);
+      refrescar();
+    })();
+  </script>
+{% endblock %}
