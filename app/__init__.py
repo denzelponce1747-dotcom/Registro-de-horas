@@ -30,6 +30,11 @@ LIBRES_DE_NUBE = (
 )
 
 
+# Peticiones que no son pantallas: no muestran los avisos del correo.
+SIN_AVISOS_CORREO = ("/static/", "/estado", "/adios", "/favicon.ico", "/marca/",
+                     "/reportes/", "/ayuda/")
+
+
 def crear_app(configuracion=None, almacen=None, vida=None) -> Flask:
     aplicacion = Flask(
         __name__,
@@ -74,6 +79,12 @@ def crear_app(configuracion=None, almacen=None, vida=None) -> Flask:
         from .excel_auto import ExcelAutomatico
 
         aplicacion.config["EXCEL"] = ExcelAutomatico(aplicacion, almacen)
+
+    # Los avisos por correo salen cuando el cambio ya quedó guardado: esta
+    # capa va por fuera de todo (ver `app/correo.py`).
+    from .correo import AvisosTrasGuardar
+
+    aplicacion.wsgi_app = AvisosTrasGuardar(aplicacion.wsgi_app, aplicacion)
 
     @aplicacion.get("/estado")
     def estado():
@@ -173,6 +184,13 @@ def _registrar_guia(aplicacion: Flask) -> None:
             flash(f"No se guardó. {aviso}", "error")
             destino = request.referrer or url_for("sesion.raiz")
             return redirect(destino)
+        # Resultado de los avisos por correo que salieron tras el último
+        # cambio: se muestra en la pantalla a la que se vuelve.
+        if request.method == "GET" and not request.path.startswith(SIN_AVISOS_CORREO):
+            from .correo import resultados_por_mostrar
+
+            for categoria, mensaje in resultados_por_mostrar(aplicacion):
+                flash(mensaje, categoria)
         # Microsoft devuelve el inicio de sesión a la raíz con `code` y
         # `state`: se atiende aquí, antes que nada.
         if almacen is not None and request.path == "/" and request.args.get("state"):

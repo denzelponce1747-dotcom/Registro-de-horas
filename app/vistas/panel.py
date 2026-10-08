@@ -16,7 +16,7 @@ from flask import (
     url_for,
 )
 
-from .. import acciones
+from .. import acciones, correo
 from ..auth import exigir_perfil, sugerir_contrasena, usuario_de_sesion
 from ..datos import cargar_instantanea
 from ..graficos import barras_apiladas, barras_proyecto, leyenda, rosco_estado
@@ -319,19 +319,25 @@ def aprobaciones():
         accion = request.form.get("accion", "")
         identificador = request.form.get("id", "")
 
-        if accion == "aprobar-registro":
-            avisar(acciones.aprobar_registro(usuario, identificador))
-        elif accion == "rechazar-registro":
-            avisar(acciones.rechazar_registro(usuario, identificador))
+        if accion in ("aprobar-registro", "rechazar-registro"):
+            aprobado = accion == "aprobar-registro"
+            # Se lee antes de resolver: rechazar un alta borra el registro.
+            fila = acciones._registro_pendiente(identificador)
+            resolver = acciones.aprobar_registro if aprobado else acciones.rechazar_registro
+            resultado = avisar(resolver(usuario, identificador))
+            if resultado.get("ok") and fila:
+                _programar_aviso(lambda: correo.aviso_de_registro(dict(fila), aprobado))
         elif accion == "eliminar-ausencia":
             avisar(acciones.retirar_ausencia(usuario, identificador))
         elif accion in ("aprobar-ausencia", "rechazar-ausencia"):
             estado = "aprobada" if accion == "aprobar-ausencia" else "rechazada"
-            avisar(
+            resultado = avisar(
                 acciones.resolver_ausencia(
                     usuario, identificador, estado, request.form.get("nota", "")
                 )
             )
+            if resultado.get("ok"):
+                _programar_aviso(lambda: correo.aviso_de_ausencia(identificador))
         else:
             flash("Acción no reconocida.", "error")
 
@@ -365,6 +371,17 @@ def aprobaciones():
         proyecto_de=lambda pid: buscar_proyecto(instantanea.projects, pid),
     )
     return render_template("aprobaciones.html", **contexto_base(instantanea, contexto))
+
+
+def _programar_aviso(armar) -> None:
+    """Prepara el aviso por correo de una resolución. Nunca la interrumpe."""
+    try:
+        aviso = armar()
+    except Exception:
+        current_app.logger.exception("No se pudo preparar el aviso por correo")
+        return
+    if aviso:
+        correo.programar(aviso)
 
 
 # Configuración ------------------------------------------------------------
@@ -407,7 +424,7 @@ def configuracion():
         )
 
     vista = request.args.get("vista", "equipo")
-    if vista not in ("equipo", "proyectos", "historial", "seguridad"):
+    if vista not in VISTAS_CONFIGURACION:
         vista = "equipo"
 
     contexto = dict(
@@ -434,8 +451,64 @@ def configuracion():
         contexto.update(historial=recientes(300, busqueda), busqueda=busqueda)
     elif vista == "seguridad":
         contexto.update(_contexto_seguridad())
+    elif vista == "correo":
+        contexto.update(_contexto_correo(colaboradores, usuario))
 
     return render_template("configuracion.html", **contexto_base(instantanea, contexto))
+
+
+VISTAS_CONFIGURACION = ("equipo", "proyectos", "correo", "historial", "seguridad")
+
+
+def _contexto_correo(colaboradores, usuario) -> dict:
+    ajustes = correo.leer_ajustes()
+    return {
+        "correo_ajustes": ajustes,
+        "correo_contrasena_guardada": bool(correo.contrasena_local()),
+        "correo_seguridades": correo.SEGURIDADES,
+        "correo_proveedores": correo.PROVEEDORES,
+        "correo_sin_direccion": [p for p in colaboradores if p.active and not (p.email or "").strip()],
+        "correo_recientes": correo.recientes(current_app),
+        "correo_prueba_para": ajustes.get("copia") or correo.remitente_de(ajustes),
+    }
+
+
+def _resolver_accion_correo(usuario, accion: str, formulario) -> None:
+    if accion == "guardar-correo":
+        resultado = avisar(correo.guardar_ajustes(usuario, {
+            "activo": formulario.get("activo") == "1",
+            "servidor": formulario.get("servidor", ""),
+            "puerto": formulario.get("puerto", ""),
+            "seguridad": formulario.get("seguridad", ""),
+            "usuario": formulario.get("usuario_smtp", ""),
+            "remitente": formulario.get("remitente", ""),
+            "nombre_remitente": formulario.get("nombre_remitente", ""),
+            "avisar_ausencias": formulario.get("avisar_ausencias") == "1",
+            "avisar_registros": formulario.get("avisar_registros") == "1",
+            "copia": formulario.get("copia", ""),
+        }))
+        # La contraseña queda solo en esta computadora; en blanco, se
+        # conserva la que ya estaba.
+        contrasena = formulario.get("contrasena_smtp", "")
+        if resultado.get("ok") and contrasena:
+            try:
+                correo.guardar_contrasena_local(contrasena)
+            except OSError as fallo:
+                flash(f"No se pudo guardar la contraseña en esta computadora: {fallo}", "error")
+
+    elif accion == "olvidar-contrasena-correo":
+        correo.olvidar_contrasena_local()
+        flash("Se borró la contraseña del correo de esta computadora.", "exito")
+
+    elif accion == "probar-correo":
+        if not usuario or usuario.role != "administrador":
+            flash("Solo la administración prueba el correo.", "error")
+            return
+        para = (formulario.get("para") or "").strip()
+        if not correo._correo_valido(para):
+            flash("Escriba un correo válido para la prueba.", "error")
+            return
+        correo.programar(correo.aviso_de_prueba(para))
 
 
 def _contexto_seguridad() -> dict:
@@ -462,11 +535,14 @@ def _resolver_accion_configuracion(usuario):
     accion = request.form.get("accion", "")
     formulario = request.form
     vista = formulario.get("vista", "equipo")
-    if vista not in ("equipo", "proyectos", "historial", "seguridad"):
+    if vista not in VISTAS_CONFIGURACION:
         vista = "equipo"
     volver = url_for("panel.configuracion", vista=vista)
 
-    if accion == "periodo":
+    if accion in ("guardar-correo", "olvidar-contrasena-correo", "probar-correo"):
+        _resolver_accion_correo(usuario, accion, formulario)
+
+    elif accion == "periodo":
         avisar(
             acciones.actualizar_periodo(
                 usuario,

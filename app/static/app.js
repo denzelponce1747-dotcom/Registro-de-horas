@@ -533,6 +533,20 @@
     });
   }
 
+  // ───────────────────────────────────── Proveedores de correo (Configuración)
+
+  document.querySelectorAll("[data-servidor]").forEach((boton) => {
+    boton.addEventListener("click", () => {
+      const poner = (id, valor) => {
+        const campo = document.getElementById(id);
+        if (campo) campo.value = valor;
+      };
+      poner("servidor", boton.dataset.servidor);
+      poner("puerto", boton.dataset.puerto);
+      poner("seguridad", boton.dataset.seguridad);
+    });
+  });
+
   // ───────────────────────────────────────────── Presentación de entrada
 
   const presentacion = document.getElementById("presentacion");

@@ -9,13 +9,14 @@
         'Configuración',
         'Administre las cuentas del equipo y sus credenciales, la jornada, el saldo '
         ~ 'de vacaciones y el periodo individual de cada reporte, además del '
-        ~ 'tarifario por hora de los proyectos.') }}
+        ~ 'tarifario por hora de los proyectos y los avisos por correo.') }}
 
     <div class="surge" style="animation-delay:70ms">
       <div class="pestanas" role="tablist" aria-label="Secciones de configuración">
         {% for clave, texto_pestana, nombre_icono in [
             ('equipo', 'Colaboradores', 'personas'),
             ('proyectos', 'Tarifario de proyectos', 'carpetas'),
+            ('correo', 'Avisos por correo', 'correo'),
             ('historial', 'Historial de cambios', 'lista'),
             ('seguridad', 'Seguridad', 'escudo-visto')] %}
           <a class="pestana" role="tab" aria-selected="{{ 'true' if vista == clave else 'false' }}"
@@ -29,6 +30,7 @@
     {% if vista == 'proyectos' %}{{ seccion_proyectos() }}
     {% elif vista == 'historial' %}{{ seccion_historial() }}
     {% elif vista == 'seguridad' %}{{ seccion_seguridad() }}
+    {% elif vista == 'correo' %}{{ seccion_correo() }}
     {% else %}{{ seccion_equipo() }}{% endif %}
   </div>
 {% endblock %}
@@ -108,7 +110,7 @@
               <p class="campo-pista">Se muestra una sola vez; entréguesela en persona.</p>
             </div>
             <div class="campo">
-              <label for="email">Correo</label>
+              <label for="email">Correo (recibe los avisos)</label>
               <input class="control" id="email" name="email" type="email"
                      placeholder="persona@majerie.cr" autocomplete="off" />
             </div>
@@ -192,7 +194,7 @@
                    name="username" value="{{ persona.username }}" autocapitalize="none" />
           </div>
           <div class="campo">
-            <label for="correo-{{ persona.id }}">Correo</label>
+            <label for="correo-{{ persona.id }}">Correo (recibe los avisos)</label>
             <input class="control control--compacto" id="correo-{{ persona.id }}"
                    name="email" type="email" value="{{ persona.email }}" />
           </div>
@@ -641,6 +643,202 @@
           <p class="texto-pequeno texto-tenue">Esta computadora no tiene una cuenta de Microsoft conectada.</p>
         {% endif %}
       </div>
+    </section>
+  </div>
+{% endmacro %}
+
+
+{# ──────────────────────────────────────────────────────── Avisos por correo #}
+{% macro seccion_correo() %}
+  {% set c = correo_ajustes %}
+  <div class="pila-media surge" style="animation-delay:140ms">
+    <section class="tarjeta tarjeta--acolchada">
+      <h2 class="tarjeta-titulo">Avisos por correo</h2>
+      <p class="texto-pequeno texto-tenue" style="margin-top:4px;line-height:1.65">
+        Cuando la administración aprueba o rechaza unas vacaciones, un permiso pagado con horas
+        acumuladas o cualquier otra ausencia, la persona recibe un correo con el resultado y su
+        saldo actualizado. Así no tiene que entrar a revisar. El correo sale de la cuenta que
+        configure aquí, en el momento en que la resolución queda guardada.
+      </p>
+
+      {% if c.activo %}
+        <p class="aviso-exito" style="margin-top:16px">{{ icono('visto', '16px') }}
+          <span>Los avisos están activos.
+            {% if not correo_contrasena_guardada and c.usuario %}
+              <b>Pero esta computadora todavía no tiene la contraseña:</b> escríbala abajo para que
+              los avisos salgan también cuando se aprueba desde aquí.
+            {% endif %}</span></p>
+      {% else %}
+        <p class="aviso-info" style="margin-top:16px">{{ icono('info', '16px') }}
+          <span>Los avisos están apagados. Complete los datos de la cuenta de correo, marque
+            «Enviar avisos por correo» y guarde.</span></p>
+      {% endif %}
+
+      <form method="post" style="margin-top:20px">
+        <input type="hidden" name="accion" value="guardar-correo" />
+        <input type="hidden" name="vista" value="correo" />
+
+        <label class="fila texto-pequeno" style="gap:8px;margin-bottom:18px">
+          <input type="checkbox" name="activo" value="1" {{ 'checked' if c.activo }} />
+          <b>Enviar avisos por correo</b>
+        </label>
+
+        <div class="rejilla rejilla--2">
+          <div class="campo">
+            <label for="servidor">Servidor de correo (SMTP)</label>
+            <input class="control" id="servidor" name="servidor" value="{{ c.servidor }}"
+                   placeholder="smtp.office365.com" autocomplete="off" spellcheck="false" />
+            <p class="campo-pista">
+              {% for proveedor in correo_proveedores %}
+                <button type="button" class="enlace-boton" data-servidor="{{ proveedor.servidor }}"
+                        data-puerto="{{ proveedor.puerto }}" data-seguridad="{{ proveedor.seguridad }}">{{ proveedor.nombre }}</button>{{ ' · ' if not loop.last }}
+              {% endfor %}
+            </p>
+          </div>
+          <div class="rejilla rejilla--2">
+            <div class="campo">
+              <label for="puerto">Puerto</label>
+              <input class="control control-numero" id="puerto" name="puerto" type="number"
+                     min="1" max="65535" value="{{ c.puerto }}" />
+            </div>
+            <div class="campo">
+              <label for="seguridad">Seguridad</label>
+              <select class="control" id="seguridad" name="seguridad">
+                {% for clave, texto in correo_seguridades.items() %}
+                  <option value="{{ clave }}" {{ 'selected' if c.seguridad == clave }}>{{ texto }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <div class="campo">
+            <label for="usuario_smtp">Usuario de la cuenta</label>
+            <input class="control" id="usuario_smtp" name="usuario_smtp" value="{{ c.usuario }}"
+                   placeholder="avisos@majerie.com" autocomplete="off" spellcheck="false" />
+            <p class="campo-pista">Normalmente es la misma dirección de correo.</p>
+          </div>
+          <div class="campo">
+            <label for="contrasena_smtp">Contraseña</label>
+            <input class="control" id="contrasena_smtp" name="contrasena_smtp" type="password"
+                   autocomplete="new-password"
+                   placeholder="{{ 'Guardada en esta computadora · déjela en blanco para conservarla' if correo_contrasena_guardada else 'Contraseña o contraseña de aplicación' }}" />
+            <p class="campo-pista">Se guarda solo en esta computadora, protegida por Windows; no
+              sube a SharePoint. Cada computadora de administración la escribe una vez.</p>
+          </div>
+
+          <div class="campo">
+            <label for="remitente">Correo del remitente</label>
+            <input class="control" id="remitente" name="remitente" type="email" value="{{ c.remitente }}"
+                   placeholder="Si se deja en blanco, se usa el usuario" />
+          </div>
+          <div class="campo">
+            <label for="nombre_remitente">Nombre del remitente</label>
+            <input class="control" id="nombre_remitente" name="nombre_remitente"
+                   value="{{ c.nombre_remitente }}" />
+          </div>
+
+          <div class="campo">
+            <label for="copia">Copia oculta (opcional)</label>
+            <input class="control" id="copia" name="copia" type="email" value="{{ c.copia }}"
+                   placeholder="administracion@majerie.com" />
+            <p class="campo-pista">Recibe una copia de cada aviso, para llevar el control.</p>
+          </div>
+          <div class="campo">
+            <span class="campo-etiqueta" style="font-size:13px;font-weight:500;color:var(--tinta-2)">Qué se avisa</span>
+            <label class="fila texto-pequeno" style="gap:8px;margin-top:6px">
+              <input type="checkbox" name="avisar_ausencias" value="1" {{ 'checked' if c.avisar_ausencias }} />
+              Vacaciones, permisos y demás ausencias aprobadas o rechazadas
+            </label>
+            <label class="fila texto-pequeno" style="gap:8px;margin-top:6px">
+              <input type="checkbox" name="avisar_registros" value="1" {{ 'checked' if c.avisar_registros }} />
+              Cambios de horas (registros) aprobados o rechazados
+            </label>
+          </div>
+        </div>
+
+        <div class="fila" style="margin-top:20px;gap:10px">
+          <button class="boton boton--primario" type="submit" data-texto-ocupado="Guardando…">
+            {{ icono('visto', '16px') }} <span>Guardar los ajustes de correo</span>
+          </button>
+        </div>
+      </form>
+
+      {% if correo_contrasena_guardada %}
+        <form method="post" class="linea-superior fila fila--separada" style="gap:10px">
+          <input type="hidden" name="accion" value="olvidar-contrasena-correo" />
+          <input type="hidden" name="vista" value="correo" />
+          <span class="texto-pequeno texto-tenue">Esta computadora tiene guardada la contraseña del correo.</span>
+          <button class="boton boton--fantasma boton--sm" type="submit"
+                  data-confirmar="¿Borrar la contraseña del correo de esta computadora? Los avisos no saldrán desde aquí hasta que la vuelva a escribir.">
+            Borrar la contraseña de esta computadora
+          </button>
+        </form>
+      {% endif %}
+    </section>
+
+    <section class="tarjeta tarjeta--acolchada">
+      <h2 class="tarjeta-titulo">Probar el envío</h2>
+      <p class="texto-pequeno texto-tenue" style="margin-top:4px;line-height:1.65">
+        Guarde los ajustes y envíe un correo de prueba. El resultado aparece arriba en cuanto
+        termina.
+      </p>
+      <form method="post" class="fila" style="gap:10px;margin-top:14px;align-items:flex-end">
+        <input type="hidden" name="accion" value="probar-correo" />
+        <input type="hidden" name="vista" value="correo" />
+        <div class="campo" style="flex:1;min-width:14rem">
+          <label for="para">Enviar la prueba a</label>
+          <input class="control" id="para" name="para" type="email" value="{{ correo_prueba_para }}" required />
+        </div>
+        <button class="boton boton--secundario" type="submit" data-texto-ocupado="Enviando…">
+          {{ icono('correo', '16px') }} <span>Enviar correo de prueba</span>
+        </button>
+      </form>
+
+      {% if correo_recientes %}
+        <ul class="lista-dividida" style="margin:18px -20px 0">
+          {% for envio in correo_recientes %}
+            <li class="fila fila--separada texto-pequeno" style="gap:12px">
+              <span class="{{ 'positivo' if envio.ok else 'negativo' }}" style="font-weight:500">{{ envio.mensaje }}</span>
+              <span class="texto-menudo texto-tenue" style="white-space:nowrap">{{ formatear_momento(envio.momento) }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </section>
+
+    {% if correo_sin_direccion %}
+      <section class="tarjeta tarjeta--acolchada">
+        <h2 class="tarjeta-titulo">Colaboradores sin correo</h2>
+        <p class="texto-pequeno texto-tenue" style="margin-top:4px;line-height:1.65">
+          Estas personas no recibirán avisos hasta que se anote su correo en su ficha
+          (Configuración › Colaboradores › Editar).
+        </p>
+        <ul class="lista-dividida" style="margin:12px -20px 0">
+          {% for persona in correo_sin_direccion %}
+            <li class="fila fila--separada texto-pequeno">
+              <span>{{ persona.name }}</span>
+              <a class="boton boton--fantasma boton--sm"
+                 href="{{ url_for('panel.configuracion', vista='equipo', editar=persona.id) }}">Agregar correo</a>
+            </li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% endif %}
+
+    <section class="tarjeta tarjeta--acolchada">
+      <h2 class="tarjeta-titulo">Ayuda para configurar la cuenta</h2>
+      <ul class="desglose-reglas" style="margin-top:10px">
+        <li><b>Microsoft 365 / Outlook:</b> servidor smtp.office365.com, puerto 587, STARTTLS. La
+          cuenta debe tener habilitado «SMTP autenticado» (lo activa quien administra Microsoft 365
+          en el centro de administración › Usuarios › Correo). Si la cuenta usa verificación en dos
+          pasos, cree una contraseña de aplicación.</li>
+        <li><b>Gmail / Google Workspace:</b> servidor smtp.gmail.com, puerto 587, STARTTLS. Active la
+          verificación en dos pasos y use una «contraseña de aplicación» (no la contraseña normal).</li>
+        <li>Conviene usar una cuenta dedicada a los avisos (por ejemplo avisos@…), no el correo
+          personal de alguien.</li>
+        <li>Si el correo falla, la aprobación igual queda hecha: el motivo aparece en pantalla y en
+          la lista de envíos de arriba.</li>
+      </ul>
     </section>
   </div>
 {% endmacro %}

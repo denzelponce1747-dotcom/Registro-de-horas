@@ -47,6 +47,9 @@ SIN_SUBIDA = ("/ingresar", "/identidad", "/salir", "/bienvenida", "/conexion/",
 # cambio no se pudo guardar.
 MARCA_AVISO = "majerie.aviso_nube"
 
+# Avisos por correo programados durante la petición (`app/correo.py`).
+CAJA_AVISOS = "majerie.avisos_correo"
+
 
 class _Captura:
     def __init__(self):
@@ -102,6 +105,11 @@ class Sincronizacion:
             nuevo["wsgi.input"] = io.BytesIO(cuerpo)
             nuevo["CONTENT_LENGTH"] = str(len(cuerpo))
             nuevo.update(extra)
+            # Cada intento empieza sin avisos por correo: solo se envían los
+            # del intento que de verdad se guardó (ver `app/correo.py`).
+            caja = entorno.get(CAJA_AVISOS)
+            if caja is not None:
+                caja["avisos"].clear()
             return nuevo
 
         if ruta.startswith(SIN_SUBIDA):

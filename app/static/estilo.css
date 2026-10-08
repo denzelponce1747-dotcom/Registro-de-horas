@@ -3403,3 +3403,20 @@ input[type="radio"] {
     gap: 2px;
   }
 }
+
+/* Botón con aspecto de enlace (proveedores de correo) */
+
+.enlace-boton {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--acento);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.enlace-boton:hover {
+  color: var(--acento-fuerte);
+}
