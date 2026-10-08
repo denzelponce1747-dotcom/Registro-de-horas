@@ -1,0 +1,691 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Manual de Usuario · Sistema de Registro de Horas · MAJERIE S.R.L</title>
+<style>
+/*@@FUENTES@@*/
+:root {
+  --tinta: #0b0b0c;
+  --texto: #3a3a40;
+  --suave: #66666e;
+  --tenue: #a0a0a8;
+  --linea: #e4e3de;
+  --lienzo: #f6f6f3;
+  --acento: #7a00cc;
+  --acento-suave: #f4ebff;
+  --alerta: #9a3e12;
+  --alerta-suave: #fdf0e9;
+  --exito: #047857;
+  --exito-suave: #ecfdf5;
+}
+* { box-sizing: border-box; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body {
+  margin: 0;
+  font-family: "Inter Manual", "Segoe UI", Arial, sans-serif;
+  font-size: 10.4pt;
+  line-height: 1.55;
+  color: var(--texto);
+  background: #fff;
+  font-feature-settings: "cv11", "ss01";
+}
+h1, h2, h3 { color: var(--tinta); letter-spacing: -0.01em; }
+b, strong { color: var(--tinta); font-weight: 600; }
+code { font-family: "Cascadia Mono", Consolas, monospace; font-size: 0.9em; background: var(--lienzo);
+       padding: 1px 4px; border-radius: 4px; }
+a { color: var(--acento); }
+
+/* ------------------------------------------------------------ Páginas */
+@page {
+  size: A4;
+  margin: 24mm 18mm 20mm;
+  @top-left { content: "MAJERIE S.R.L"; font: 600 7pt "Inter Manual", Arial, sans-serif;
+              letter-spacing: 0.32em; color: #0b0b0c; vertical-align: bottom; padding-bottom: 4mm; }
+  @top-right { content: "MANUAL DE USUARIO"; font: 500 6.5pt "Inter Manual", Arial, sans-serif;
+               letter-spacing: 0.18em; color: #a0a0a8; vertical-align: bottom; padding-bottom: 4mm; }
+  @bottom-left { content: "Sistema de Registro de Horas"; font: 400 6.8pt "Inter Manual", Arial, sans-serif;
+                 color: #a0a0a8; vertical-align: top; padding-top: 4mm; }
+  @bottom-right { content: counter(page) " / " counter(pages); font: 400 6.8pt "Inter Manual", Arial, sans-serif;
+                  color: #a0a0a8; vertical-align: top; padding-top: 4mm; }
+}
+@page :first {
+  margin: 0;
+  @top-left { content: none; } @top-right { content: none; }
+  @bottom-left { content: none; } @bottom-right { content: none; }
+}
+
+.hoja { max-width: 174mm; margin: 0 auto; }
+.capitulo { break-before: page; }
+.evitar-corte, figure, .nota, table, .tarjetas, .pasos li { break-inside: avoid; }
+table.larga { break-inside: auto; }
+tr { break-inside: avoid; }
+h2, h3 { break-after: avoid; }
+
+/* ------------------------------------------------------------ Portada */
+.portada {
+  position: relative;
+  height: 296.5mm;
+  width: 210mm;
+  margin: 0 auto;
+  padding: 26mm 22mm 20mm;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(circle at 0 0, rgba(122, 0, 204, 0.12), transparent 38%),
+    linear-gradient(rgba(11, 11, 12, 0.035) 1px, transparent 1px) 0 0 / 9mm 9mm,
+    linear-gradient(90deg, rgba(11, 11, 12, 0.035) 1px, transparent 1px) 0 0 / 9mm 9mm,
+    #fff;
+  overflow: hidden;
+}
+.portada .logo { width: 64mm; }
+.pildora { display: inline-block; margin-top: 7mm; padding: 1.4mm 4mm; border: 1.4px solid var(--acento);
+           border-radius: 99px; color: var(--acento); font-size: 6.6pt; font-weight: 600; letter-spacing: 0.14em; }
+.portada .centro { margin-top: auto; }
+.raya { width: 12mm; height: 3px; background: var(--acento); border-radius: 2px; margin-bottom: 7mm; }
+.portada h1 { margin: 0; font-size: 27pt; line-height: 1.12; font-weight: 700; }
+.portada h1 span { color: var(--acento); display: block; }
+.portada .bajada { margin-top: 7mm; padding-top: 7mm; border-top: 1.5px solid var(--tinta); max-width: 120mm;
+                   color: var(--suave); font-size: 11pt; }
+.portada .meta { margin-top: 26mm; padding-top: 5mm; border-top: 1px solid var(--linea); display: grid;
+                 grid-template-columns: repeat(3, 1fr); font-size: 8pt; }
+.meta dt { font-size: 6pt; letter-spacing: 0.16em; color: var(--tenue); font-weight: 600; }
+.meta dd { margin: 1.5mm 0 0; color: var(--tinta); }
+
+/* ------------------------------------------------------------ Títulos */
+.ojal { margin: 0; font-size: 7pt; font-weight: 700; letter-spacing: 0.16em; color: var(--acento); text-transform: uppercase; }
+.capitulo > h1, .contenido > h1 { margin: 1.5mm 0 0; padding-bottom: 4mm; border-bottom: 1.6px solid var(--tinta);
+                                  font-size: 17pt; font-weight: 700; }
+.entrada { color: var(--suave); margin: 5mm 0 2mm; }
+h2 { font-size: 12.5pt; margin: 8mm 0 2.5mm; font-weight: 650; }
+h3 { font-size: 10.6pt; margin: 6mm 0 2mm; font-weight: 650; }
+p { margin: 0 0 3mm; }
+.nuevo { display: inline-block; margin-left: 2mm; padding: 0.3mm 2mm; border-radius: 99px; background: var(--acento-suave);
+         color: var(--acento); font-size: 6.4pt; font-weight: 700; letter-spacing: 0.1em; vertical-align: 2px; }
+
+/* ------------------------------------------------------------ Índice */
+.indice { margin: 6mm 0 8mm; padding: 2mm 6mm; background: #fafaf8; border: 1px solid var(--linea); border-radius: 3mm; }
+.indice a { display: grid; grid-template-columns: 12mm 1fr; padding: 3.2mm 0; border-bottom: 1px solid var(--linea);
+            text-decoration: none; color: inherit; }
+.indice a:last-child { border-bottom: 0; }
+.indice .num { color: var(--acento); font-weight: 700; font-size: 8.5pt; }
+.indice b { display: block; font-size: 10pt; }
+.indice small { color: var(--suave); font-size: 8.4pt; }
+
+.tarjetas { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; margin: 4mm 0; }
+.tarjeta { border: 1px solid var(--linea); border-radius: 2.5mm; padding: 4mm 4.5mm; }
+.tarjeta .ojal { font-size: 6.4pt; }
+.tarjeta b { display: block; margin: 1.2mm 0 1.2mm; font-size: 9.8pt; }
+.tarjeta p { margin: 0; color: var(--suave); font-size: 8.8pt; line-height: 1.5; }
+
+/* ------------------------------------------------------------ Figuras */
+figure { margin: 4mm 0 5mm; }
+figure img { display: block; max-width: 100%; max-height: 92mm; width: auto; border: 1px solid var(--linea);
+             border-radius: 2.5mm; box-shadow: 0 1px 2px rgba(11, 11, 12, 0.05); }
+figure.angosta img { max-width: 52%; max-height: 80mm; }
+figure.media img { max-width: 72%; max-height: 92mm; }
+figcaption { margin-top: 2mm; font-size: 8.2pt; color: var(--suave); }
+figcaption b { color: var(--tinta); }
+
+/* ------------------------------------------------------------ Pasos */
+.pasos { list-style: none; counter-reset: paso; padding: 0; margin: 3mm 0 4mm; }
+.pasos li { counter-increment: paso; position: relative; padding: 0.4mm 0 2.6mm 9mm; }
+.pasos li::before { content: counter(paso); position: absolute; left: 0; top: 0.3mm; width: 5.4mm; height: 5.4mm;
+                    border-radius: 50%; background: var(--tinta); color: #fff; font-size: 7.4pt; font-weight: 700;
+                    display: flex; align-items: center; justify-content: center; }
+ul.lista { margin: 2mm 0 4mm; padding-left: 5mm; }
+ul.lista li { margin-bottom: 1.6mm; }
+
+/* ------------------------------------------------------------ Notas */
+.nota { margin: 4mm 0 5mm; padding: 3.5mm 4.5mm; border-left: 3px solid var(--acento); background: var(--acento-suave);
+        border-radius: 0 2.5mm 2.5mm 0; font-size: 9.4pt; }
+.nota .ojal { margin-bottom: 1.2mm; }
+.nota p:last-child { margin: 0; }
+.nota.atencion { border-color: #eb6834; background: var(--alerta-suave); }
+.nota.atencion .ojal { color: var(--alerta); }
+.nota.practica { border-color: #059669; background: var(--exito-suave); }
+.nota.practica .ojal { color: var(--exito); }
+.nota.tecnica { border-color: var(--tinta); background: #f4f4f1; }
+.nota.tecnica .ojal { color: var(--tinta); }
+
+/* ------------------------------------------------------------ Tablas */
+table { width: 100%; border-collapse: collapse; margin: 3mm 0 5mm; font-size: 9.2pt; }
+th { text-align: left; font-size: 6.6pt; letter-spacing: 0.14em; color: var(--suave); font-weight: 600;
+     padding: 2mm 3mm 2mm 0; border-bottom: 1.4px solid var(--tinta); text-transform: uppercase; }
+td { padding: 2.6mm 3mm 2.6mm 0; border-bottom: 1px solid var(--linea); vertical-align: top; }
+td:first-child { font-weight: 600; color: var(--tinta); width: 34%; }
+table.conceptos td:first-child { width: 28%; }
+td small { display: block; font-weight: 400; color: var(--tenue); }
+.formula { margin: 3mm 0 4mm; padding: 3.5mm 4.5mm; border: 1px dashed var(--linea); border-radius: 2.5mm;
+           font-weight: 600; color: var(--tinta); text-align: center; }
+.arbol { font-family: "Cascadia Mono", Consolas, monospace; font-size: 8.2pt; background: #fafaf8; border: 1px solid var(--linea);
+         border-radius: 2.5mm; padding: 4mm 5mm; white-space: pre; line-height: 1.7; }
+.cierre { margin-top: 10mm; padding-top: 4mm; border-top: 1px solid var(--linea); color: var(--tenue); font-size: 8pt; text-align: center; }
+
+/* ------------------------------------------------------------ Pantalla */
+@media screen {
+  body { background: #ecebe6; padding: 24px 12px; }
+  .portada, .hoja { background-color: #fff; box-shadow: 0 10px 40px -20px rgba(0, 0, 0, 0.35); border-radius: 6px; }
+  .portada { width: auto; height: auto; min-height: 260mm; max-width: 210mm; margin-bottom: 24px; }
+  .arbol { overflow-x: auto; }
+  .hoja { max-width: 210mm; padding: 18mm 18mm 14mm; margin-bottom: 24px; }
+  .capitulo { break-before: auto; }
+  figure img { max-height: 640px; }
+  figure.angosta img { max-height: 520px; }
+}
+@media screen and (max-width: 700px) {
+  body { font-size: 15px; padding: 0; }
+  .portada, .hoja { border-radius: 0; padding: 22px 16px; min-height: 0; }
+  .portada .meta { margin-top: 32px; }
+  td:first-child { width: 38%; }
+  table { font-size: 13px; }
+  .portada .meta, .tarjetas { grid-template-columns: 1fr; gap: 12px; }
+  figure.angosta img, figure.media img { max-width: 100%; }
+  .portada .logo { width: 70%; }
+}
+@media print {
+  .solo-pantalla { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ================================================================ Portada -->
+<section class="portada">
+  <img class="logo" src="imagenes/logo.png" alt="MAJERIE S.R.L">
+  <div><span class="pildora">COLABORADORES Y ADMINISTRACIÓN</span></div>
+  <div class="centro">
+    <div class="raya"></div>
+    <h1>Manual de Usuario <span>Sistema de Registro de Horas</span></h1>
+    <p class="bajada">Cómo ponerlo en marcha con el SharePoint de la empresa, abrirlo en cada computadora,
+      registrar la jornada, entender el saldo de horas y de vacaciones, pedir ausencias, recibir
+      avisos por correo y administrar al equipo.</p>
+    <dl class="meta">
+      <div><dt>DOCUMENTO</dt><dd>Manual de Usuario</dd></div>
+      <div><dt>VERSIÓN</dt><dd>3.1 · Octubre 2026</dd></div>
+      <div><dt>USO</dt><dd>Interno · MAJERIE S.R.L</dd></div>
+    </dl>
+  </div>
+</section>
+
+<div class="hoja">
+
+<!-- ================================================================ Contenido -->
+<section class="contenido">
+  <p class="ojal">Contenido</p>
+  <h1>Lo que encontrará en este manual</h1>
+  <nav class="indice">
+    <a href="#c1"><span class="num">01</span><span><b>Puesta en marcha</b><small>Una sola vez para toda la empresa: Microsoft 365, la carpeta de SharePoint y los datos.</small></span></a>
+    <a href="#c2"><span class="num">02</span><span><b>La primera vez en cada computadora</b><small>Abrir el programa, elegir el navegador, conectar la carpeta y entrar.</small></span></a>
+    <a href="#c3"><span class="num">03</span><span><b>El día a día</b><small>La ventana del programa, la sesión, el menú, el estado de SharePoint y los avisos.</small></span></a>
+    <a href="#c4"><span class="num">04</span><span><b>Colaboradores: horas, saldo, ausencias y proyectos</b><small>Registrar la jornada, entender el saldo de horas y de vacaciones, pedir ausencias y recibir el aviso por correo.</small></span></a>
+    <a href="#c5"><span class="num">05</span><span><b>Administración</b><small>Dashboard, reportes, aprobaciones, configuración, avisos por correo y seguridad.</small></span></a>
+    <a href="#c6"><span class="num">06</span><span><b>Datos, ajustes y copias de seguridad</b><small>Dónde vive cada cosa, las copias diarias y cómo actualizar el programa.</small></span></a>
+    <a href="#c7"><span class="num">07</span><span><b>Conceptos y cálculos</b><small>Horas deber, horas acumuladas, almuerzo, vacaciones y tarifas.</small></span></a>
+    <a href="#c8"><span class="num">08</span><span><b>Si algo no funciona</b><small>Lo que se ve en pantalla, qué significa y qué hacer.</small></span></a>
+  </nav>
+
+  <h2>Qué cambió en la versión 3.1</h2>
+  <div class="tarjetas">
+    <div class="tarjeta"><p class="ojal">Saldo de horas</p><b>Se ve cómo se calcula y cuándo cambia</b>
+      <p>«Mis horas» explica el saldo con sus números. El día de hoy cuenta al registrar la primera
+      actividad, y la vista Semana muestra el saldo al cierre de cada día.</p></div>
+    <div class="tarjeta"><p class="ojal">Vacaciones</p><b>Ningún día aprobado se pierde de vista</b>
+      <p>Se ve qué vacaciones se descuentan, las que están en curso se reparten entre disfrutadas y por
+      disfrutar, y el cierre de año ya no deja días sin descontar.</p></div>
+    <div class="tarjeta"><p class="ojal">Avisos</p><b>Un correo al aprobar o rechazar</b>
+      <p>Vacaciones, permisos pagados con horas acumuladas y demás ausencias: la persona recibe el
+      resultado y su saldo. Se configura en Configuración → Avisos por correo.</p></div>
+    <div class="tarjeta"><p class="ojal">Actualizar</p><b>Mismos datos, mismo SharePoint</b>
+      <p>Basta con reemplazar el .exe en cada computadora. Los datos no cambian de formato y no hay
+      que volver a conectar nada.</p></div>
+  </div>
+
+  <h2>Cómo leer este manual</h2>
+  <div class="nota"><p class="ojal">Nota</p><p>Amplía o matiza lo que se acaba de explicar.</p></div>
+  <div class="nota atencion"><p class="ojal">Atención</p><p>Algo que suele causar errores o que no tiene vuelta atrás.</p></div>
+  <div class="nota practica"><p class="ojal">Buena práctica</p><p>Recomendación para que el registro sea fiel y no dé trabajo después.</p></div>
+  <p>Las secciones marcadas <span class="nuevo">NUEVO 3.1</span> son nuevas o cambiaron en esta versión.</p>
+</section>
+
+<!-- ================================================================ Capítulo 1 -->
+<section class="capitulo" id="c1">
+  <p class="ojal">Capítulo 1</p>
+  <h1>Puesta en marcha</h1>
+  <p class="entrada">Se hace una sola vez para toda la empresa. Después, cada computadora nueva solo necesita
+    el programa y el enlace de la carpeta (capítulo 2).</p>
+
+  <h2>1.1 Autorizar el programa en Microsoft 365</h2>
+  <p>Lo hace el administrador de Microsoft 365 de la empresa, en unos diez minutos. Permite que el programa
+    lea y guarde en SharePoint con la cuenta de cada persona, y solo en lo que esa persona ya puede ver. El
+    mismo paso a paso está dentro del programa, en el enlace <b>Ver las instrucciones para el administrador</b>
+    de la guía de la primera vez.</p>
+  <ol class="pasos">
+    <li>Entre a <b>https://entra.microsoft.com</b> con una cuenta de administración (Administrador de aplicaciones o superior).</li>
+    <li>Vaya a <b>Aplicaciones → Registros de aplicaciones → Nuevo registro</b>.</li>
+    <li>Nombre: <b>MAJERIE Registro de Horas</b>. En <b>Tipos de cuenta compatibles</b> elija <b>Solo las cuentas de este directorio organizativo</b>.</li>
+    <li>En <b>URI de redirección</b> elija <b>Cliente público/nativo (móvil y escritorio)</b> y escriba <code>http://localhost</code>. Pulse <b>Registrar</b>.</li>
+    <li>Copie el <b>Id. de aplicación (cliente)</b> de la página de resumen: es el identificador de la aplicación que pide el programa.</li>
+    <li>En <b>Autenticación</b>, active <b>Permitir flujos de clientes públicos</b> y guarde.</li>
+    <li>En <b>Permisos de API → Agregar un permiso → Microsoft Graph → Permisos delegados</b>, marque <b>Files.ReadWrite.All</b> y <b>Sites.Read.All</b>.</li>
+    <li>Pulse <b>Conceder consentimiento de administrador</b> y confirme: así nadie tendrá que aceptar permisos al conectar.</li>
+  </ol>
+  <div class="nota tecnica"><p class="ojal">Detalle técnico</p>
+    <p>Los permisos son delegados: el programa nunca actúa por su cuenta ni ve más que la persona que lo usa.
+    La contraseña de Microsoft se escribe en la página de Microsoft, nunca en el programa, y aplican la
+    verificación en dos pasos y las políticas de acceso de la empresa. Si se desea, el identificador puede
+    venir incluido dentro del .exe para que nadie tenga que escribirlo (variable <code>MAJERIE_CLIENTE_ID</code>
+    al compilar con <code>empaquetar.py</code>).</p></div>
+
+  <h2>1.2 La carpeta de SharePoint</h2>
+  <ol class="pasos">
+    <li>Cree una carpeta en una biblioteca de SharePoint de la empresa, por ejemplo <b>Registro de Horas</b>.</li>
+    <li>Compártala con todas las personas que usan el sistema, con permiso de edición (cada computadora guarda ahí sus cambios).</li>
+    <li>Use <b>Copiar vínculo</b> y entregue ese enlace a cada persona junto con el programa y, si no viene incluido, el identificador de la aplicación.</li>
+  </ol>
+
+  <h2>1.3 La primera computadora crea los datos</h2>
+  <p>La primera computadora que se conecta a la carpeta vacía (capítulo 2) termina la guía con este paso.
+    Hágalo en la computadora donde funcionaba la versión anterior: el sistema la detecta y ofrece subir sus datos.</p>
+  <figure class="media"><img src="imagenes/guia-datos.png" alt="">
+    <figcaption><b>Paso 3 de la guía.</b> Subir los datos de la versión anterior, empezar desde cero (crea solo la
+    cuenta de administración) o restaurar una copia de seguridad.</figcaption></figure>
+  <div class="nota atencion"><p class="ojal">Atención</p>
+    <p>Antes de subir los datos, cierre la ventana negra de la versión anterior y no la vuelva a usar: lo que se
+    anote ahí después ya no llegaría a SharePoint. La base vieja no se borra: queda apartada en la carpeta
+    <code>version-anterior-subida-AAAA-MM-DD</code> de esa computadora.</p></div>
+</section>
+
+<!-- ================================================================ Capítulo 2 -->
+<section class="capitulo" id="c2">
+  <p class="ojal">Capítulo 2</p>
+  <h1>La primera vez en cada computadora</h1>
+  <p class="entrada">Necesita Windows 10 u 11, el archivo <b>Sistema de Registro de Horas.exe</b>, el enlace de la
+    carpeta de SharePoint, su cuenta de Microsoft 365 de la empresa y su usuario y contraseña del sistema. El
+    .exe no se instala: puede estar en el Escritorio, en Documentos o en una memoria USB.</p>
+  <ol class="pasos">
+    <li>Haga doble clic en el programa. Aparece la tarjeta <b>Abriendo el sistema…</b> mientras arranca (unos segundos).</li>
+    <li>Si Windows muestra <b>Windows protegió su PC</b>, pulse <b>Más información</b> y luego <b>Ejecutar de todas formas</b>.
+      Pasa solo la primera vez, porque el programa no tiene firma digital paga.</li>
+    <li>Elija el navegador con que se abrirá el sistema y pulse <b>Abrir el sistema</b>. Sirven Brave, Chrome, Edge,
+      Vivaldi y otros basados en Chromium.</li>
+    <li>Pegue el enlace de la carpeta de SharePoint (y el identificador de la aplicación, si se lo pide) y pulse
+      <b>Continuar con Microsoft</b>.</li>
+    <li>Entre con su cuenta de Microsoft 365 de la empresa en la página de Microsoft.</li>
+    <li>Listo: el sistema baja los datos y muestra el ingreso. Escriba su usuario y contraseña.</li>
+  </ol>
+  <figure class="angosta"><img src="imagenes/navegador.png" alt="">
+    <figcaption><b>Selector de navegador.</b> Propone el predeterminado de Windows. Se puede cambiar después en Ajustes.</figcaption></figure>
+  <figure class="media"><img src="imagenes/guia-carpeta.png" alt="">
+    <figcaption><b>Paso 1 de la guía.</b> El enlace se copia en SharePoint con <b>Copiar vínculo</b>.</figcaption></figure>
+  <figure class="angosta"><img src="imagenes/ingreso.png" alt="">
+    <figcaption><b>Ingreso.</b> Las veces siguientes el programa abre directo aquí.</figcaption></figure>
+</section>
+
+<!-- ================================================================ Capítulo 3 -->
+<section class="capitulo" id="c3">
+  <p class="ojal">Capítulo 3</p>
+  <h1>El día a día</h1>
+
+  <h2>La ventana del programa</h2>
+  <ul class="lista">
+    <li>El sistema se abre en su propia ventana, sin pestañas ni barra de direcciones.</li>
+    <li>Un segundo doble clic en el .exe no abre otra copia: abre otra ventana del mismo programa.</li>
+    <li>Al cerrar la última ventana, el programa termina solo a los pocos segundos.</li>
+  </ul>
+
+  <h2>Ingreso y sesión</h2>
+  <p>Con <b>Mantener la sesión iniciada en esta computadora</b> marcado, la sesión dura 30 días; sin marcar,
+    12 horas. Tras 8 intentos fallidos con un mismo usuario, el ingreso se frena 10 minutos. Si olvida su
+    contraseña, la administración le asigna una nueva.</p>
+  <figure class="angosta"><img src="imagenes/menu-cuenta.png" alt="">
+    <figcaption><b>Menú de su cuenta</b> (su nombre, arriba a la derecha): cambiar la contraseña, Ajustes de esta
+    computadora, el manual y salir.</figcaption></figure>
+
+  <h2>El indicador de SharePoint</h2>
+  <p>Junto al menú, la barra muestra el estado de la conexión: <b>SharePoint · al día</b> o <b>hace 20 s</b> cuando
+    todo está bien; <b>Guardando…</b>, <b>Trayendo cambios…</b>, <b>Sin conexión</b>, <b>Reconectar</b> o
+    <b>Solo lectura</b> cuando no. Cada cambio se guarda en SharePoint en el momento. Si dos personas guardan a
+    la vez, se guardan las dos cosas.</p>
+
+  <h2>Los avisos en pantalla</h2>
+  <figure><img src="imagenes/aviso-sin-conexion.png" alt="">
+    <figcaption><b>Sin conexión.</b> Se sigue viendo la última copia; lo escrito queda en pantalla y se guarda cuando vuelve la conexión.</figcaption></figure>
+  <figure><img src="imagenes/aviso-sesion.png" alt="">
+    <figcaption><b>Sesión de Microsoft vencida.</b> Pulse <b>Volver a conectar</b> y entre otra vez con su cuenta de Microsoft.</figcaption></figure>
+  <figure><img src="imagenes/aviso-cambios.png" alt="">
+    <figcaption><b>Cambios de otra computadora.</b> Pulse <b>Actualizar la pantalla</b> para verlos.</figcaption></figure>
+
+  <h2>Los avisos por correo <span class="nuevo">NUEVO 3.1</span></h2>
+  <p>Cuando la administración aprueba o rechaza una solicitud suya —vacaciones, un permiso pagado con horas
+    acumuladas o cualquier otra ausencia— le llega un correo con el resultado, la nota de la administración y
+    su saldo actualizado. Ya no hace falta entrar a revisar. Para recibirlo, la administración debe tener los
+    avisos activos y su ficha debe tener su correo (capítulo 5).</p>
+</section>
+
+<!-- ================================================================ Capítulo 4 -->
+<section class="capitulo" id="c4">
+  <p class="ojal">Capítulo 4</p>
+  <h1>Colaboradores: horas, saldo, ausencias y proyectos</h1>
+
+  <h2>Mis horas</h2>
+  <p>Se abre sola al ingresar. Arriba, cuatro indicadores: registros, <b>horas acumuladas</b> (su saldo),
+    vacaciones disponibles y pendientes de aprobación. Debajo, el desglose del saldo y las vistas <b>Día</b>,
+    <b>Semana</b> e <b>Historial</b>.</p>
+  <figure><img src="imagenes/mis-horas.png" alt="">
+    <figcaption><b>Mis horas, vista Día.</b> Horas del día, horas deber, diferencia y el almuerzo de la jornada.
+    Bajo «Horas acumuladas» se lee si el saldo ya incluye el día de hoy.</figcaption></figure>
+
+  <h3>Registrar una actividad</h3>
+  <ol class="pasos">
+    <li>En la vista Día, ubique la fecha con las flechas, el calendario o <b>Hoy</b>.</li>
+    <li>Pulse <b>Nueva actividad</b>.</li>
+    <li>Indique hora de inicio y de finalización, elija el proyecto y escriba las <b>observaciones</b> (obligatorias: salen en los reportes).</li>
+    <li>Pulse <b>Guardar actividad</b>.</li>
+  </ol>
+  <figure><img src="imagenes/nueva-actividad.png" alt="">
+    <figcaption><b>Nueva actividad.</b> El sistema no deja guardar horarios que se crucen con otra actividad del
+    mismo día ni una salida anterior a la entrada.</figcaption></figure>
+
+  <h3>El almuerzo</h3>
+  <p>Se indica una sola vez por jornada, con los atajos (Sin almuerzo, 30m, 45m, 1h, 1h 30m) o en minutos, y se
+    reparte solo entre las actividades del día en proporción a su duración.</p>
+
+  <h3>La ventana de aprobación: 4 días</h3>
+  <table>
+    <tr><th>Antigüedad de la jornada</th><th>Al crear, editar o eliminar</th></tr>
+    <tr><td>Hasta 4 días</td><td>Se aplica de inmediato.</td></tr>
+    <tr><td>Más de 4 días</td><td>Queda <b>Por aprobar</b> y llega a la bandeja de la administración. Si se rechaza, todo vuelve a como estaba.</td></tr>
+  </table>
+
+  <h2>Su saldo de horas: cómo y cuándo se actualiza <span class="nuevo">NUEVO 3.1</span></h2>
+  <p>Las <b>horas acumuladas</b> son su saldo: lo que lleva trabajado de más (positivo) o de menos (negativo)
+    frente a su jornada. Se calcula así, siempre dentro de su periodo:</p>
+  <p class="formula">Saldo inicial + horas trabajadas − horas deber − horas usadas en permisos = horas acumuladas</p>
+  <p>El recuadro <b>¿Cómo se calcula mi saldo de horas y cuándo se actualiza?</b> de «Mis horas» muestra esa
+    cuenta con sus números. Ábralo cuando quiera revisar de dónde sale el saldo.</p>
+  <figure><img src="imagenes/desglose.png" alt="">
+    <figcaption><b>El desglose del saldo.</b> 0,00 h de saldo inicial + 366,58 h trabajadas − 357,00 h deber
+    − 8,50 h de un permiso pagado con horas = +1,08 h.</figcaption></figure>
+
+  <h3>Cuándo se refleja cada cosa</h3>
+  <table>
+    <tr><th>Qué pasa</th><th>Qué hace el saldo</th></tr>
+    <tr><td>Empieza el día y todavía no registra nada</td><td>No cambia: muestra el saldo <b>al cierre de ayer</b>. El
+      indicador dice «hoy cuenta al registrar».</td></tr>
+    <tr><td>Registra la primera actividad del día<small>Ejemplo: 07:45 – 12:30 = 4,75 h</small></td><td>Entra la jornada de hoy:
+      suma las 4,75 h y descuenta las 8,50 h deber del día. El saldo baja 3,75 h: es lo que le falta para completar el día.</td></tr>
+    <tr><td>Registra el resto de la jornada<small>12:30 – 17:15 y 45 min de almuerzo</small></td><td>El día queda con
+      8,75 h netas: el saldo termina 0,25 h por encima del de ayer.</td></tr>
+    <tr><td>Un día laboral sin ningún registro</td><td>Sus horas deber se descuentan <b>al día siguiente</b>. Si lo
+      completa después, el saldo se recupera en el momento.</td></tr>
+    <tr><td>Un registro que espera aprobación</td><td>Ya cuenta. Si la administración rechaza un registro nuevo, sus horas se quitan.</td></tr>
+    <tr><td>Fin de semana, feriado o ausencia aprobada</td><td>No genera horas deber: el saldo no se mueve.</td></tr>
+    <tr><td>Permiso personal pagado con horas acumuladas</td><td>Se descuenta <b>el día en que empieza</b>, una vez aprobado.
+      Mientras espera aprobación, no se descuenta.</td></tr>
+  </table>
+
+  <h3>La vista Semana</h3>
+  <p>Cada día muestra lo trabajado, las horas deber, la diferencia y el <b>saldo al cierre del día</b>. La semana
+    arranca con el saldo real de la semana anterior, así que el último día coincide con «Horas acumuladas».</p>
+  <figure><img src="imagenes/semana.png" alt="">
+    <figcaption><b>Vista Semana.</b> El jueves todavía no tiene registros: sus 8,50 h deber cuentan al registrar.</figcaption></figure>
+  <div class="nota practica"><p class="ojal">Buena práctica</p>
+    <p>Registre el mismo día. Un día laboral sin registro suma horas deber desde el día siguiente y baja su
+    saldo hasta que lo complete.</p></div>
+
+  <h2>Vacaciones y ausencias</h2>
+  <p>En <b>Ausencias</b>: elija el tipo (vacaciones, permiso personal, cita médica, incapacidad u otra), las fechas,
+    los días (el sistema propone los hábiles del rango y los vuelve a proponer cada vez que cambia las fechas; use
+    0,5 para medio día) y el motivo. Toda solicitud la aprueba la administración. Un permiso personal puede pagarse
+    con horas acumuladas. Mientras esté pendiente, puede <b>Retirarla</b>.</p>
+  <figure><img src="imagenes/solicitar-ausencia.png" alt="">
+    <figcaption><b>Solicitar una ausencia.</b> Los días aprobados se descuentan del saldo y esas fechas dejan de sumar horas deber.</figcaption></figure>
+
+  <h3>Su saldo de vacaciones <span class="nuevo">NUEVO 3.1</span></h3>
+  <p class="formula">Base anual + acumulado del año anterior − días aprobados = días disponibles</p>
+  <p>«Aprobados» incluye los días ya disfrutados y los que están por disfrutar. Unas vacaciones en curso se
+    reparten: los días hábiles que ya pasaron cuentan como disfrutados y el resto como por disfrutar. Las
+    solicitudes pendientes se muestran aparte y todavía no se descuentan.</p>
+  <figure><img src="imagenes/vacaciones.png" alt="">
+    <figcaption><b>Saldo de vacaciones.</b> Con <b>Ver qué vacaciones se descuentan del saldo</b> se ve cada solicitud
+    y lo que aporta: disfrutadas, en curso, por disfrutar, en espera o de un año ya cerrado.</figcaption></figure>
+  <div class="nota"><p class="ojal">Nota</p>
+    <p>Si le quedaron días sin disfrutar de años anteriores y «Acumulado del año anterior» aparece en 0, pídale a
+    la administración que los anote en su ficha. Si una solicitud muestra «el rango tiene N días hábiles», se
+    pidieron menos días que los del rango: revísela con la administración.</p></div>
+
+  <h3>El aviso por correo <span class="nuevo">NUEVO 3.1</span></h3>
+  <p>Cuando su solicitud se aprueba o se rechaza, recibe un correo como este. Si no le llega, revise la carpeta de
+    correo no deseado y que su ficha tenga su correo.</p>
+  <figure class="media"><img src="imagenes/correo-recibido.png" alt="">
+    <figcaption><b>Aviso de vacaciones aprobadas.</b> Incluye las fechas, los días, quién resolvió, su nota y el saldo actualizado.</figcaption></figure>
+
+  <h2>Proyectos</h2>
+  <p>Los proyectos de la empresa los crea la administración y se ven en solo lectura. Con <b>Nuevo proyecto</b>
+    puede crear los suyos (código, nombre y líder), que solo usted ve. Las tarifas no se ven desde este perfil.</p>
+</section>
+
+<!-- ================================================================ Capítulo 5 -->
+<section class="capitulo" id="c5">
+  <p class="ojal">Capítulo 5</p>
+  <h1>Administración</h1>
+  <p class="entrada">La cuenta de administración la comparten María Quesada y Jérémie Surbeck. Al ingresar se elige
+    quién la usa: ese nombre queda en cada aprobación, en el historial de cambios y en los avisos por correo. Se
+    cambia desde el menú con <b>Cambiar de identidad</b>.</p>
+
+  <h2>Dashboard</h2>
+  <figure><img src="imagenes/dashboard.png" alt="">
+    <figcaption><b>Los ocho indicadores del equipo.</b> Colaboradores, registros, horas trabajadas, horas deber,
+    horas acumuladas, vacaciones disponibles, pendientes y monto facturable por moneda.</figcaption></figure>
+  <p>Debajo: los gráficos (horas por colaborador, estado de los registros y horas por proyecto), los saldos de
+    cada persona, los filtros y el detalle de registros.</p>
+
+  <h2>Reportes de Excel</h2>
+  <figure><img src="imagenes/periodo-reporte.png" alt="">
+    <figcaption><b>Periodo del reporte.</b> «Todo el equipo» usa el periodo general; una persona, el suyo. Con
+    Desde/Hasta se saca un tramo (una quincena, un mes) sin cambiar nada guardado.</figcaption></figure>
+  <p><b>Reporte general:</b> resumen, detalle de todos los registros y una hoja por colaborador con el control
+    diario (horas, horas deber, diferencia y acumulado). <b>Reporte por colaborador:</b> el formato para facturar,
+    con tarifa y monto por registro, y la hoja de proyectos. El acumulado de los reportes es el mismo que ve cada
+    persona en «Mis horas».</p>
+
+  <h2>Aprobaciones</h2>
+  <p>Llegan todas las ausencias y los registros de horas con más de 4 días de antigüedad. Cada asunto explica qué
+    se pide. <b>Aprobar</b> aplica el cambio; <b>rechazar</b> lo deja como estaba (un registro nuevo rechazado se
+    descarta). Si dos personas resuelven lo mismo a la vez, vale la primera. Si los avisos por correo están
+    activos, la persona recibe el resultado en cuanto la resolución queda guardada, y la pantalla confirma
+    «Se avisó por correo a …».</p>
+  <figure><img src="imagenes/aprobaciones.png" alt="">
+    <figcaption><b>Bandeja de aprobaciones.</b> Pestañas de Horas, Ausencias y Resueltas.</figcaption></figure>
+
+  <h2>Configuración</h2>
+  <ul class="lista">
+    <li><b>Colaboradores:</b> <b>Agregar colaborador</b> (propone usuario y contraseña inicial). En <b>Editar ficha</b>:
+      datos y correo (a donde llegan los avisos), si puede ingresar, horas deber por día, horas acumuladas previas,
+      vacaciones, tarifa, periodo del reporte, <b>Trasladar saldo al año siguiente</b> y <b>Restablecer la contraseña</b>.</li>
+    <li><b>Tarifario de proyectos:</b> tarifa del proyecto y, dentro de cada proyecto, una tarifa distinta por persona si hace falta.</li>
+    <li><b>Avisos por correo</b> <span class="nuevo">NUEVO 3.1</span>: la cuenta desde la que salen los avisos (sección siguiente).</li>
+    <li><b>Historial de cambios:</b> quién cambió qué, cuándo y desde qué computadora (últimos 1.500).</li>
+    <li><b>Seguridad:</b> las cuentas de Microsoft que pueden recuperar el acceso de administración.</li>
+  </ul>
+  <figure><img src="imagenes/agregar-colaborador.png" alt="">
+    <figcaption><b>Agregar colaborador.</b> Entregue usuario y contraseña por un canal directo. Anote su correo para que reciba los avisos.</figcaption></figure>
+
+  <h3>Saldos iniciales de cada persona <span class="nuevo">NUEVO 3.1</span></h3>
+  <figure><img src="imagenes/ficha-parametros.png" alt="">
+    <figcaption><b>Parámetros de la ficha.</b> Horas acumuladas previas y vacaciones del año anterior son el punto
+    de partida de cada saldo.</figcaption></figure>
+  <ul class="lista">
+    <li><b>Horas acumuladas previas:</b> el saldo con que la persona empieza su periodo (puede ser negativo).</li>
+    <li><b>Vacaciones del año anterior (días):</b> los días que traía sin disfrutar. Se suman a la base anual.
+      Si una persona dice que le faltan días de vacaciones, revise primero este valor.</li>
+    <li><b>Periodo del reporte:</b> el saldo de horas solo cuenta lo que cae dentro de él. Un periodo que empieza
+      antes de que la persona registrara deja un saldo negativo grande.</li>
+  </ul>
+
+  <h3>Cerrar el año de vacaciones <span class="nuevo">NUEVO 3.1</span></h3>
+  <p><b>Trasladar saldo al año siguiente</b> pasa los días disponibles a «vacaciones del año anterior» y, desde la
+    fecha de corte, solo cuentan las vacaciones nuevas. Hágalo <b>el 1 de enero o después</b>: el sistema propone el
+    1 de enero del año en curso y ya no acepta fechas de corte futuras (antes, un corte adelantado dejaba sin
+    descontar las vacaciones aprobadas entre ese día y el corte). Una vez hecho, la ficha indica que el año ya se
+    cerró hasta el próximo enero.</p>
+  <div class="nota atencion"><p class="ojal">Atención</p>
+    <p>Eliminar a una persona borra también sus registros, ausencias y proyectos. Si deja la empresa, desmarque
+    <b>Puede ingresar al sistema</b>: no entra más y su historial se conserva.</p></div>
+
+  <h2>Avisos por correo <span class="nuevo">NUEVO 3.1</span></h2>
+  <p>Configure una sola vez la cuenta desde la que salen los avisos. Los ajustes quedan en SharePoint y los ven
+    las dos personas de la administración; la contraseña, en cambio, se guarda solo en cada computadora.</p>
+  <ol class="pasos">
+    <li>Elija la cuenta de correo de los avisos. Conviene una dedicada (por ejemplo <b>avisos@…</b>), no el correo personal de alguien.</li>
+    <li>Vaya a <b>Configuración → Avisos por correo</b>. Pulse <b>Microsoft 365 / Outlook</b> o <b>Gmail / Google Workspace</b>
+      para llenar servidor, puerto y seguridad.</li>
+    <li>Escriba el <b>usuario</b> (el correo) y la <b>contraseña</b>. Si la cuenta usa verificación en dos pasos, use una
+      <b>contraseña de aplicación</b>.</li>
+    <li>Marque <b>Enviar avisos por correo</b> y elija qué se avisa: ausencias (vacaciones, permisos y demás) y, si
+      quiere, también los cambios de horas. Si desea una copia de cada aviso, escriba un correo en <b>Copia oculta</b>.</li>
+    <li>Pulse <b>Guardar los ajustes de correo</b> y luego <b>Enviar correo de prueba</b>. El resultado aparece arriba en la pantalla.</li>
+    <li>Revise la lista <b>Colaboradores sin correo</b> y anote el correo de cada persona en su ficha.</li>
+    <li>En la otra computadora de administración, abra la misma pantalla y escriba solo la contraseña.</li>
+  </ol>
+  <figure><img src="imagenes/correo-config.png" alt="">
+    <figcaption><b>Configuración → Avisos por correo.</b> La contraseña dice «Guardada en esta computadora» cuando ya está.</figcaption></figure>
+  <div class="nota atencion"><p class="ojal">Atención · Microsoft 365</p>
+    <p>Para enviar por <code>smtp.office365.com</code> la cuenta de avisos debe tener activado el <b>SMTP autenticado</b>.
+    Lo activa quien administra Microsoft 365: Centro de administración → Usuarios activos → la cuenta → Correo →
+    <b>Administrar aplicaciones de correo electrónico</b> → marcar <b>SMTP autenticado</b>. Si no se activa, el
+    correo de prueba dirá que el servidor rechazó el usuario o la contraseña.</p></div>
+  <div class="nota tecnica"><p class="ojal">Detalle técnico</p>
+    <p>El aviso sale desde la computadora que aprueba, en el momento en que la aprobación quedó guardada en
+    SharePoint: si el guardado no se pudo hacer, no sale ningún aviso, y si se repite por un cambio simultáneo
+    sale uno solo. Un fallo del correo nunca deshace la aprobación: el motivo aparece en pantalla y en la lista
+    de envíos de esa computadora. La contraseña se guarda protegida por Windows y no sube a SharePoint.</p></div>
+
+  <h2>Si nadie recuerda la contraseña de administración</h2>
+  <p>La cuenta de Microsoft que creó el sistema queda autorizada para recuperarla (se agregan más en
+    <b>Configuración → Seguridad</b>). En una computadora conectada con esa cuenta: <b>Ajustes → Copias de seguridad
+    → Restablecer la contraseña de administración</b>. El sistema muestra la nueva una sola vez; las horas y las
+    demás cuentas no se tocan.</p>
+</section>
+
+<!-- ================================================================ Capítulo 6 -->
+<section class="capitulo" id="c6">
+  <p class="ojal">Capítulo 6</p>
+  <h1>Datos, ajustes y copias de seguridad</h1>
+
+  <h2>Dónde vive cada cosa</h2>
+  <div class="arbol">Registro de Horas/                    la carpeta compartida
+  Sistema de Registro de Horas/       La carpeta del programa. No la mueva ni la renombre.
+    datos.majerie                     Todos los datos, comprimidos, cifrados y sellados.
+    Respaldos/                        Una copia por día, de los últimos 30 días.
+    LEAME - no mover ni editar…       Aviso para quien abra la carpeta.</div>
+  <p>Cada computadora guarda solo su configuración, una copia de trabajo, su sesión de Microsoft y, en las de
+    administración, la contraseña del correo de avisos (ambas protegidas por Windows) en
+    <code>%LOCALAPPDATA%\MAJERIE Registro de Horas</code>. El programa solo atiende a la propia computadora: nadie
+    puede conectarse a él desde la red.</p>
+  <div class="nota tecnica"><p class="ojal">Detalle técnico</p>
+    <p>El cifrado protege de la curiosidad, no de alguien decidido a desarmar el programa: la protección de verdad
+    son los permisos de la carpeta. Compártala solo con el equipo.</p></div>
+
+  <h2>Ajustes de esta computadora</h2>
+  <figure><img src="imagenes/conexion-sharepoint.png" alt="">
+    <figcaption><b>Conexión con SharePoint.</b> Sincronizar ahora, abrir la carpeta, entrar con otra cuenta, desconectar o usar otra carpeta.</figcaption></figure>
+  <p>También: el tema (automático, claro u oscuro), el navegador de la ventana, las opciones avanzadas
+    (identificador de la aplicación e inquilino) y, en <b>Acerca del programa</b>, el registro técnico para soporte.</p>
+
+  <h2>Copias de seguridad</h2>
+  <p>Cada día, la primera computadora que abre el programa deja una copia en <b>Respaldos</b>. La administración las ve
+    en <b>Ajustes → Copias de seguridad → Ver y restaurar copias</b>: descargar, restaurar una fecha o restaurar desde
+    un archivo. Antes de restaurar se guarda la versión actual, por si acaso. SharePoint guarda además el historial
+    de versiones de cada archivo.</p>
+  <figure><img src="imagenes/copias-seguridad.png" alt="">
+    <figcaption><b>Copias de seguridad.</b> Una por día en SharePoint, de la más nueva a la más vieja.</figcaption></figure>
+
+  <h2>Excel en SharePoint (opcional)</h2>
+  <p>La administración puede activar en Ajustes un Excel que se actualiza solo en la carpeta del sistema, para verlo
+    desde el celular. Viene apagado: esa carpeta la abre todo el equipo y el Excel trae horas, tarifas, montos y
+    ausencias de todos. Actívelo solo si la carpeta es exclusiva de la administración.</p>
+
+  <h2>Actualizar el programa <span class="nuevo">NUEVO 3.1</span></h2>
+  <ol class="pasos">
+    <li>Cierre el sistema (cierre su ventana).</li>
+    <li>Reemplace <b>Sistema de Registro de Horas.exe</b> por el nuevo.</li>
+    <li>Ábralo con doble clic: entra directo, con la misma carpeta, la misma cuenta y los mismos datos.</li>
+  </ol>
+  <p>La versión 3.1 no cambia el formato de los datos, así que puede convivir con computadoras que todavía tengan la
+    3.0. Aun así, actualice todas: solo la 3.1 envía los avisos por correo y muestra el saldo con la regla nueva del
+    día de hoy. Cuando una versión futura sí cambie el formato, las computadoras con la versión vieja pasarán a
+    <b>solo lectura</b> hasta actualizarse: así nadie daña datos que no entiende.</p>
+</section>
+
+<!-- ================================================================ Capítulo 7 -->
+<section class="capitulo" id="c7">
+  <p class="ojal">Capítulo 7</p>
+  <h1>Conceptos y cálculos</h1>
+  <table class="conceptos larga">
+    <tr><td>Horas trabajadas</td><td>Fin − inicio de cada actividad, menos su parte del almuerzo del día (prorrateado
+      según la duración). Ejemplo: 6 h y 2 h con 60 min de almuerzo → se descuentan 45 y 15 min.</td></tr>
+    <tr><td>Horas deber</td><td>La jornada esperada de cada día laboral (por ejemplo 8,50 h). No suman horas deber los
+      fines de semana, los feriados de ley de Costa Rica (incluidos Jueves y Viernes Santo), los días de ausencia
+      aprobada, los días que todavía no llegan ni los que quedan fuera del periodo de la persona. Un día laboral sin
+      registro sí suma. <b>El día de hoy suma desde que se registra su primera actividad; si no se registra nada,
+      desde el día siguiente.</b></td></tr>
+    <tr><td>Horas acumuladas<small>el saldo</small></td><td>Saldo previo + horas trabajadas − horas deber − horas
+      usadas en permisos personales, todo dentro del periodo de la persona. No existen «horas extra»: existe este
+      saldo. Un registro pendiente de aprobación ya cuenta.</td></tr>
+    <tr><td>Permiso pagado con horas</td><td>Las horas acumuladas que usa se descuentan el día en que empieza el
+      permiso, una vez aprobado. Ese día no suma horas deber.</td></tr>
+    <tr><td>Vacaciones</td><td>Disponibles = base anual (20) + acumulado del año anterior − días aprobados (disfrutados
+      y por disfrutar). Unas vacaciones en curso se reparten entre disfrutadas (días hábiles ya pasados) y por
+      disfrutar. Las pendientes no se descuentan hasta que se aprueban.</td></tr>
+    <tr><td>Trasladar saldo</td><td>Pasa lo disponible al año siguiente con una fecha de corte que ya llegó (1 de enero
+      o después). Las vacaciones anteriores al corte quedan incluidas en «acumulado del año anterior» y no se vuelven
+      a descontar.</td></tr>
+    <tr><td>Ventana de aprobación</td><td>4 días. Al mover un registro de fecha, cuenta la más antigua de las dos.</td></tr>
+    <tr><td>Tarifa</td><td>Se resuelve en cascada: la de la persona en ese proyecto → la del colaborador → la del
+      proyecto. Un «sin tarifa» corta la cascada. Monto = horas trabajadas × tarifa. Las monedas (CRC, USD, EUR,
+      CHF) nunca se suman entre sí.</td></tr>
+    <tr><td>Aviso por correo</td><td>Sale desde la computadora que resuelve, cuando la resolución ya quedó guardada en
+      SharePoint. Va al correo de la ficha de la persona y, si se configuró, con copia oculta.</td></tr>
+  </table>
+</section>
+
+<!-- ================================================================ Capítulo 8 -->
+<section class="capitulo" id="c8">
+  <p class="ojal">Capítulo 8</p>
+  <h1>Si algo no funciona</h1>
+  <table class="larga">
+    <tr><th>Lo que se ve</th><th>Qué significa y qué hacer</th></tr>
+    <tr><td>Doble clic y no pasa nada</td><td>Windows bloqueó el archivo descargado: clic derecho → Propiedades → Desbloquear → Aceptar.</td></tr>
+    <tr><td>«Windows protegió su PC»</td><td>Más información → Ejecutar de todas formas.</td></tr>
+    <tr><td>Vuelve a preguntar el navegador</td><td>El navegador elegido se desinstaló o cambió de lugar: elija otro.</td></tr>
+    <tr><td>«Usuario o contraseña incorrectos»</td><td>El usuario va en minúsculas. Si insiste, la administración asigna una contraseña nueva.</td></tr>
+    <tr><td>Sin conexión</td><td>Revise internet. Se ve la última copia; lo escrito queda en pantalla.</td></tr>
+    <tr><td>Reconectar / sesión de Microsoft vencida</td><td>Pulse Volver a conectar y entre con su cuenta de Microsoft.</td></tr>
+    <tr><td>Falta el archivo</td><td>Alguien movió o borró <code>datos.majerie</code>: recupérelo de la Papelera del sitio de SharePoint o restaure una copia (capítulo 6).</td></tr>
+    <tr><td>Solo lectura: «versión más nueva»</td><td>Actualice el programa en esta computadora.</td></tr>
+    <tr><td>El saldo no cuadra</td><td>Abra «¿Cómo se calcula mi saldo de horas…?» en Mis horas: muestra cada parte de la
+      cuenta. Casi siempre hay días laborales sin registrar, un saldo inicial o un periodo mal anotados en la ficha.</td></tr>
+    <tr><td>«El saldo no bajó esta mañana»</td><td>Es lo esperado: el día de hoy cuenta cuando registra la primera actividad.</td></tr>
+    <tr><td>Me faltan días de vacaciones</td><td>Abra «Ver qué vacaciones se descuentan del saldo» en Ausencias. Si
+      «Acumulado del año anterior» está en 0 y le quedaban días, la administración los anota en su ficha.</td></tr>
+    <tr><td>El traslado de vacaciones no acepta la fecha</td><td>La fecha de corte todavía no llega: haga el traslado el 1 de enero o después.</td></tr>
+    <tr><td>No me llegó el correo de aviso</td><td>Revise el correo no deseado. Confirme que su ficha tenga su correo, que
+      los avisos estén activos y que la computadora que aprobó tenga la versión 3.1 y la contraseña guardada.</td></tr>
+    <tr><td>«El servidor rechazó el usuario o la contraseña»</td><td>Revise la contraseña. En Microsoft 365 active el SMTP
+      autenticado de la cuenta; con verificación en dos pasos use una contraseña de aplicación.</td></tr>
+    <tr><td>«Esta computadora no tiene guardada la contraseña del correo»</td><td>Escríbala en Configuración → Avisos por
+      correo. Se pide una vez en cada computadora de administración.</td></tr>
+    <tr><td>Un registro no genera monto</td><td>Algún nivel del tarifario está en «sin tarifa».</td></tr>
+  </table>
+  <div class="nota"><p class="ojal">Nota</p>
+    <p>Para soporte: <b>Ajustes → Acerca del programa → Ver las últimas líneas</b> muestra el registro técnico. Ante
+    dudas sobre horas, vacaciones o aprobaciones, la referencia es la administración.</p></div>
+  <p class="cierre">Manual de Usuario · Versión 3.1 · Octubre 2026 · Documento interno de MAJERIE S.R.L</p>
+</section>
+
+</div>
+</body>
+</html>

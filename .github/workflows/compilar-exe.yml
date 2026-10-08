@@ -76,7 +76,7 @@ jobs:
             if ($r.StatusCode -ne 200) { throw "$ruta respondió $($r.StatusCode)" }
             Write-Host "OK $ruta"
           }
-          Stop-Process -Id $proceso.Id -Force
+          taskkill /PID $proceso.Id /T /F | Out-Null
           Get-ChildItem dist | Format-Table Name, Length
 
       - name: Guardar como artefacto
